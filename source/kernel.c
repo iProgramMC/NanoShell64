@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <limine.h>
 
-void WritePort (char port, char thing)
+void WritePort (unsigned short port, unsigned char thing)
 {
 	__asm__ volatile ("out %%al, %%dx"::"a"(thing),"d"(port));
 }
