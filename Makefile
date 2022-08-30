@@ -93,6 +93,8 @@ override CXXFLAGS +=     \
     -mno-red-zone        \
     -mcmodel=kernel      \
     -MMD                 \
+	-fno-exceptions      \
+	-fno-rtti            \
     -I.
 
 # Internal linker flags that should not be changed by the user.
