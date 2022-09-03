@@ -27,6 +27,12 @@ namespace System
 	
 	// Reads a byte from the specified port
 	uint8_t ReadPort(uint16_t port);
+	
+	// Run all global constructors
+	void RunAllConstructors();
+	
+	// Run all global destructors
+	void RunAllDestructors();
 }
 
 #endif//_SYSTEM_HPP
