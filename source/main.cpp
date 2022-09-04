@@ -12,6 +12,8 @@
 
 #include "Console.hpp"
 #include "System.hpp"
+#include "MemMgr/PhysMemMgr.hpp"
+#include "MemMgr/VirtMemMgr.hpp"
 
 class Something
 {
@@ -64,12 +66,13 @@ extern "C" void _start(void)
 	
 	Console::InitializeFrom(&g_TerminalRequest);
 	
+	PhysMemMgr::Init();
+	
 	LogToConsole("Hello, world! %p", (void*)0xFFEEDDCCBBAA9988);
 	LogToConsole("g_something.GetCrap() => %d", g_something.GetCrap());
 	g_something.SetCrap(2);
 	LogToConsole("g_something.GetCrap() => %d", g_something.GetCrap());
 	
 	// We're done, just hang...
-	RunAllDestructors();
-	Stop();
+	Panic("Kernel would return");
 }

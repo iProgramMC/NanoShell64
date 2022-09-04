@@ -8,6 +8,27 @@
 //  ***************************************************************
 
 #include "System.hpp"
+#include "Console.hpp"
+
+void System::Panic(const char *pPanicStr, ...)
+{
+	// allocate a buffer well sized
+	char cr[8192];
+	va_list list;
+	va_start(list, pPanicStr);
+	
+	vsprintf(cr, pPanicStr, list);
+	
+	sprintf (cr + strlen(cr), "\n");
+	
+	Console::Log     ("NanoShell64 PANIC: ");
+	Console::Log     (cr);
+	
+	Console::LogDebug("NanoShell64 PANIC: ");
+	Console::LogDebug(cr);
+	
+	Stop();
+}
 
 void System::Stop()
 {

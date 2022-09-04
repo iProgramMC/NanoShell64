@@ -20,10 +20,15 @@ namespace System
 	};
 	
 	// Stop the system forcefully
+	__attribute__((noreturn))
 	void Stop();
 	
+	// Panic with a message.
+	__attribute__((noreturn))
+	void Panic(const char *pPanicStr, ...);
+	
 	// Writes a byte to the specified port
-	void   WritePort(uint16_t port, uint8_t thing);
+	void WritePort(uint16_t port, uint8_t thing);
 	
 	// Reads a byte from the specified port
 	uint8_t ReadPort(uint16_t port);
