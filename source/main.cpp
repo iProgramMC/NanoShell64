@@ -1,5 +1,5 @@
 //  ***************************************************************
-//  main.cpp - Creation date: 30/08/2022
+//  main.cpp - Creation date: 04/01/2023
 //  -------------------------------------------------------------
 //  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
 //
@@ -9,35 +9,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
-#include "Console.hpp"
-#include "System.hpp"
-#include "MemMgr/PhysMemMgr.hpp"
-#include "MemMgr/VirtMemMgr.hpp"
-
-class Something
-{
-private:
-	int m_crap = 0;
-	
-public:
-	Something()
-	{
-		m_crap = 1;
-	}
-	
-	void SetCrap(int c)
-	{
-		m_crap = c;
-	}
-	
-	int GetCrap()
-	{
-		return m_crap;
-	}
-};
-
-Something g_something;
+#include <_limine.h>
 
 // The Limine requests can be placed anywhere, but it is important that
 // the compiler does not optimise them away, so, usually, they should
@@ -58,21 +30,103 @@ volatile limine_bootloader_info_request g_BootloaderInfoRequest =
 	.response = NULL,
 };
 
+volatile limine_hhdm_request g_HHDMRequest =
+{
+	.id = LIMINE_HHDM_REQUEST,
+	.revision = 0,
+	.response = NULL,
+};
+
+volatile limine_smp_request g_SMPRequest =
+{
+	.id = LIMINE_SMP_REQUEST,
+	.revision = 0,
+	.response = NULL,
+	.flags = 0,
+};
+
+// note: these definitions are purely temporary
+
+extern "C" void _hang(void)
+{
+	__asm__("cli");
+	for (;;) __asm__("hlt");
+}
+
+extern "C" void _outb(uint16_t port, uint8_t data)
+{
+	__asm__("outb %0, %1"::"a"((uint8_t)data),"Nd"((uint16_t)port));
+}
+
+extern "C" void _e9_puts(const char* str)
+{
+	while (*str)
+	{
+		_outb(0xE9, *str);
+		str++;
+	}
+}
+
+// Since the pointer to the structure is passed into RDI, assuming
+// the x86_64 System V ABI, the first argument corresponds to RDI.
+void CPUBootstrap(limine_smp_info* pInfo)
+{
+	char pid[2];
+	pid[1] = 0;
+	pid[0] = '0' + pInfo->processor_id;
+	_e9_puts("Hello world from ");
+	_e9_puts(pid);
+	_e9_puts("!\n");
+	
+	_hang();
+}
+
+
 // The following will be our kernel's entry point.
 extern "C" void _start(void)
 {
-	using namespace System;
-	RunAllConstructors();
+	// Ensure we have our responses.
+	if (g_TerminalRequest.response == NULL || g_TerminalRequest.response->terminal_count < 1 || 
+	    g_SMPRequest.response == NULL)
+		_hang();
+		
+	limine_smp_response* pSMP = g_SMPRequest.response;
 	
-	Console::InitializeFrom(&g_TerminalRequest);
+	// Since this is an SMP system, we should bootstrap the CPUs.
+	if (pSMP->cpu_count == 1)
+	{
+		_e9_puts("Found uniprocessor system\n");
+	}
+	else
+	{
+		char chr[2];
+		chr[1] = 0;
+		chr[0] = '0' + pSMP->cpu_count;
+		_e9_puts("Found ");
+		_e9_puts(chr);
+		_e9_puts("-processor system\n");
+	}
 	
-	PhysMemMgr::Init();
+	// Boot strap each of the processors.
+	uint64_t thisProcessorIndex = -1; // we haven't found our processor yet
 	
-	LogToConsole("Hello, world! %p", (void*)0xFFEEDDCCBBAA9988);
-	LogToConsole("g_something.GetCrap() => %d", g_something.GetCrap());
-	g_something.SetCrap(2);
-	LogToConsole("g_something.GetCrap() => %d", g_something.GetCrap());
+	for (uint64_t i = 0; i < pSMP->cpu_count; i++)
+	{
+		if (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id)
+		{
+			// we will bootstrap this processor last
+			thisProcessorIndex = i;
+		}
+		
+		// writing to the goto_address of the BSP actually doesn't do anything
+		pSMP->cpus[i]->goto_address = CPUBootstrap;
+	}
 	
-	// We're done, just hang...
-	Panic("Kernel would return");
+	if (thisProcessorIndex == (uint64_t)-1)
+	{
+		_e9_puts("ERROR: Did not find this processor's index");
+		_hang();
+	}
+	
+	CPUBootstrap(pSMP->cpus[thisProcessorIndex]);
 }
