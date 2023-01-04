@@ -69,7 +69,7 @@ extern "C" void _e9_puts(const char* str)
 	}
 }
 
-extern "C" void _term_puts(const char* str)
+extern "C" size_t _strlen(const char* str)
 {
 	size_t len = 0;
 	while (*str)
@@ -77,8 +77,13 @@ extern "C" void _term_puts(const char* str)
 		len++;
 		str++;
 	}
+	return len;
+}
+
+extern "C" void _term_puts(const char* str)
+{
 	
-	g_TerminalRequest.response->write(g_TerminalRequest.response->terminals[0], str, len);
+	g_TerminalRequest.response->write(g_TerminalRequest.response->terminals[0], str, _strlen(str));
 }
 
 Atomic<int> g_CPUsInitialized;
@@ -98,7 +103,6 @@ void CPUBootstrap(limine_smp_info* pInfo)
 	
 	if (pInfo->processor_id == 0)
 	{
-		/*
 		// wait a bit
 		for (int i = 0; i < 100000000; i++)
 		{
@@ -112,12 +116,8 @@ void CPUBootstrap(limine_smp_info* pInfo)
 		start[1] = 0;
 		start[0] = '0' + loaded;
 		
-		_term_puts("\n\n\n");
 		_term_puts(start);
 		_term_puts(" processors have been bootstrapped.\n");
-		*/
-		
-		_term_puts("Hello, there!");
 	}
 	
 	_hang();

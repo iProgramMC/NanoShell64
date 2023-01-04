@@ -15,6 +15,9 @@ ISO_DIR=$(BUILD_DIR)/iso_root
 # The ISO target.
 IMAGE_TARGET=$(BUILD_DIR)/image.iso
 
+# The platform we are targetting
+TARGET=X86_64
+
 # This is the name that our final kernel executable will have.
 # Change as needed.
 override KERNEL := $(BUILD_DIR)/kernel.elf
@@ -39,10 +42,10 @@ $(eval $(call DEFAULT_VAR,CXX,c++))
 $(eval $(call DEFAULT_VAR,LD,ld))
 
 # User controllable CFLAGS.
-CFLAGS ?= -g -O2 -pipe -Wall -Wextra -I $(INC_DIR)
+CFLAGS ?= -g -O2 -pipe -Wall -Wextra -I $(INC_DIR) -DTARGET_$(TARGET)
 
 # User controllable CXXFLAGS.
-CXXFLAGS ?= -g -O2 -pipe -Wall -Wextra -I $(INC_DIR)
+CXXFLAGS ?= -g -O2 -pipe -Wall -Wextra -I $(INC_DIR) -DTARGET_$(TARGET)
 
 # User controllable preprocessor flags. We set none by default.
 CPPFLAGS ?=
