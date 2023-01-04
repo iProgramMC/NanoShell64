@@ -76,7 +76,7 @@ override CFLAGS +=       \
 
 # Internal C++ flags that should not be changed by the user.
 override CXXFLAGS +=     \
-	-std=c++11           \
+	-std=c++17           \
 	-ffreestanding       \
 	-fno-stack-protector \
 	-fno-stack-check     \

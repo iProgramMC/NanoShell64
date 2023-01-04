@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include <_limine.h>
 
+#include <Atomic.hpp>
+
 // The Limine requests can be placed anywhere, but it is important that
 // the compiler does not optimise them away, so, usually, they should
 // be made volatile or equivalent.
@@ -67,6 +69,8 @@ extern "C" void _e9_puts(const char* str)
 	}
 }
 
+Atomic<int> g_CPUsInitialized;
+
 // Since the pointer to the structure is passed into RDI, assuming
 // the x86_64 System V ABI, the first argument corresponds to RDI.
 void CPUBootstrap(limine_smp_info* pInfo)
@@ -77,6 +81,28 @@ void CPUBootstrap(limine_smp_info* pInfo)
 	_e9_puts("Hello world from ");
 	_e9_puts(pid);
 	_e9_puts("!\n");
+	
+	g_CPUsInitialized.FetchAdd(1);
+	
+	if (pInfo->processor_id == 0)
+	{
+		// wait a bit
+		for (int i = 0; i < 100000000; i++)
+		{
+			__asm__("":::"memory");
+		}
+		
+		int loaded = 0;
+		g_CPUsInitialized.Load(&loaded);
+		
+		char start[2];
+		start[1] = 0;
+		start[0] = '0' + loaded;
+		
+		_e9_puts("\n\n\n");
+		_e9_puts(start);
+		_e9_puts(" processors have been bootstrapped.\n");
+	}
 	
 	_hang();
 }
@@ -119,6 +145,7 @@ extern "C" void _start(void)
 		}
 		
 		// writing to the goto_address of the BSP actually doesn't do anything
+		pSMP->cpus[i]->extra_argument = i;
 		pSMP->cpus[i]->goto_address = CPUBootstrap;
 	}
 	
