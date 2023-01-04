@@ -93,6 +93,8 @@ extern "C" void _term_puts(const char* str)
 
 Atomic<int> g_CPUsInitialized;
 
+uint64_t g_BootstrapProcessorID = 0;
+
 // TODO: a sprintf() like function, and other string functions.
 
 // Since the pointer to the structure is passed into RDI, assuming
@@ -100,24 +102,26 @@ Atomic<int> g_CPUsInitialized;
 void CPUBootstrap(limine_smp_info* pInfo)
 {
 	// The X will be replaced.
+	uint64_t processorID = pInfo->extra_argument;
+	
 	char hello_text[] = "Hello from processor #X!\n";
-	hello_text[22] = '0' + pInfo->processor_id;
+	hello_text[22] = '0' + processorID;
 	_term_puts(hello_text);
 	
 	g_CPUsInitialized.FetchAdd(1);
 	
-	if (pInfo->processor_id == 0)
+	if (processorID == g_BootstrapProcessorID)
 	{
 		// wait a bit
-		for (int i = 0; i < 100000000; i++)
-		{
-			__asm__("":::"memory");
-		}
+		limine_smp_response* pSMP = g_SMPRequest.response;
+		
+		while ((int)pSMP->cpu_count != g_CPUsInitialized.Load())
+			Spinlock::SpinHint();
 		
 		int loaded = g_CPUsInitialized.Load();
 		
-		char procs[] = "X processors have been bootstrapped.\n";
-		procs[0] = '0' + loaded;
+		char procs[] = "All X processors have been bootstrapped.\n";
+		procs[4] = '0' + loaded;
 		
 		_term_puts(procs);
 	}
@@ -133,7 +137,7 @@ extern "C" void _start(void)
 	if (g_TerminalRequest.response == NULL || g_TerminalRequest.response->terminal_count < 1 || 
 	    g_SMPRequest.response == NULL)
 		_hang();
-		
+	
 	limine_smp_response* pSMP = g_SMPRequest.response;
 	
 	_term_puts("NanoShell64 (TM), January 2023 - V0.001\n");
@@ -150,27 +154,34 @@ extern "C" void _start(void)
 		_term_puts(foundprocs);
 	}
 	
-	// Boot strap each of the processors.
-	uint64_t thisProcessorIndex = -1; // we haven't found our processor yet
+	// Locate the bootstrap processor
+	for (uint64_t i = 0; i < pSMP->cpu_count; i++)
+	{
+		if (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id)
+		{
+			g_BootstrapProcessorID = i;
+			break;
+		}
+	}
+	
+	if (g_BootstrapProcessorID == (uint64_t)-1)
+	{
+		_term_puts("ERROR: Did not find this processor's index");
+		_hang();
+	}
 	
 	for (uint64_t i = 0; i < pSMP->cpu_count; i++)
 	{
 		if (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id)
 		{
 			// we will bootstrap this processor last
-			thisProcessorIndex = i;
+			continue;
 		}
 		
-		// writing to the goto_address of the BSP actually doesn't do anything
+		// writing to the goto_address of the BSP actually doesn't do anything, but let's do it anyways
 		pSMP->cpus[i]->extra_argument = i;
 		pSMP->cpus[i]->goto_address = CPUBootstrap;
 	}
 	
-	if (thisProcessorIndex == (uint64_t)-1)
-	{
-		_term_puts("ERROR: Did not find this processor's index");
-		_hang();
-	}
-	
-	CPUBootstrap(pSMP->cpus[thisProcessorIndex]);
+	CPUBootstrap(pSMP->cpus[g_BootstrapProcessorID]);
 }
