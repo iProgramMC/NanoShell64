@@ -55,7 +55,7 @@ Spinlock g_TermSpinlock;
 
 extern "C" void _hang(void)
 {
-	__asm__("cli");
+	//__asm__("cli");
 	for (;;) __asm__("hlt");
 }
 
@@ -110,25 +110,25 @@ void CPUBootstrap(limine_smp_info* pInfo)
 	
 	g_CPUsInitialized.FetchAdd(1);
 	
-	if (processorID == g_BootstrapProcessorID)
-	{
-		// wait a bit
-		limine_smp_response* pSMP = g_SMPRequest.response;
-		
-		while ((int)pSMP->cpu_count != g_CPUsInitialized.Load())
-			Spinlock::SpinHint();
-		
-		int loaded = g_CPUsInitialized.Load();
-		
-		char procs[] = "All X processors have been bootstrapped.\n";
-		procs[4] = '0' + loaded;
-		
-		_term_puts(procs);
-	}
-	
 	_hang();
 }
 
+void CPUWaitAll(void)
+{
+	// wait a bit
+	limine_smp_response* pSMP = g_SMPRequest.response;
+	
+	// Wait for all processors to initialize. Main CPU is already considered initialized.
+	while ((int)pSMP->cpu_count != g_CPUsInitialized.Load())
+		Spinlock::SpinHint();
+	
+	int loaded = g_CPUsInitialized.Load();
+	
+	char procs[] = "All X processors have been bootstrapped.\n";
+	procs[4] = '0' + loaded;
+	
+	_term_puts(procs);
+}
 
 // The following will be our kernel's entry point.
 extern "C" void _start(void)
@@ -170,6 +170,9 @@ extern "C" void _start(void)
 		_hang();
 	}
 	
+	// Mark the main CPU as initialized in the g_CPUsInitialized field.
+	g_CPUsInitialized.Store(1);
+	
 	for (uint64_t i = 0; i < pSMP->cpu_count; i++)
 	{
 		if (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id)
@@ -180,8 +183,12 @@ extern "C" void _start(void)
 		
 		// writing to the goto_address of the BSP actually doesn't do anything, but let's do it anyways
 		pSMP->cpus[i]->extra_argument = i;
-		pSMP->cpus[i]->goto_address = CPUBootstrap;
+		
+		// The spec says something about atomic writes, perhaps we should actually do that
+		__atomic_store_n(&pSMP->cpus[i]->goto_address, &CPUBootstrap, ATOMIC_DEFAULT_MEMORDER);
 	}
+	
+	CPUWaitAll();
 	
 	CPUBootstrap(pSMP->cpus[g_BootstrapProcessorID]);
 }
