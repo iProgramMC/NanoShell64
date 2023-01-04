@@ -136,7 +136,7 @@ public:
 	
 	bool CompareExchange(T* expected, T desired, bool weak, int successMemoryOrder = ATOMIC_DEFAULT_MEMORDER, int failureMemoryOrder = ATOMIC_DEFAULT_MEMORDER)
 	{
-		return __atomic_compare_exchange_n(&m_content, expected, weak, successMemoryOrder, failureMemoryOrder);
+		return __atomic_compare_exchange_n(&m_content, expected, desired, weak, successMemoryOrder, failureMemoryOrder);
 	}
 };
 

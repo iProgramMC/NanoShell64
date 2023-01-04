@@ -93,42 +93,21 @@ extern "C" void _term_puts(const char* str)
 
 Atomic<int> g_CPUsInitialized;
 
-Atomic<uint64_t> g_BootstrapProcessorID = 0;
-
 // TODO: a sprintf() like function, and other string functions.
 
 // Since the pointer to the structure is passed into RDI, assuming
 // the x86_64 System V ABI, the first argument corresponds to RDI.
-void CPUBootstrap(limine_smp_info* pInfo)
+void CPUInit(limine_smp_info* pInfo)
 {
 	// The X will be replaced.
-	uint64_t processorID = pInfo->extra_argument;
-	
 	char hello_text[] = "Hello from processor #X!\n";
-	hello_text[22] = '0' + processorID;
+	hello_text[22] = '0' + pInfo->processor_id;
 	_term_puts(hello_text);
 	
 	g_CPUsInitialized.FetchAdd(1);
 	
-	if (processorID != g_BootstrapProcessorID.Load())
+	if (!pInfo->extra_argument)
 		_hang();
-}
-
-void CPUWaitAll(void)
-{
-	// wait a bit
-	limine_smp_response* pSMP = g_SMPRequest.response;
-	
-	// Wait for all processors to initialize. Main CPU is already considered initialized.
-	while ((int)pSMP->cpu_count != g_CPUsInitialized.Load())
-		Spinlock::SpinHint();
-	
-	int loaded = g_CPUsInitialized.Load();
-	
-	char procs[] = "All X processors have been bootstrapped.\n";
-	procs[4] = '0' + loaded;
-	
-	_term_puts(procs);
 }
 
 // The following will be our kernel's entry point.
@@ -155,35 +134,30 @@ extern "C" void _start(void)
 		_term_puts(foundprocs);
 	}
 	
-	// Locate the bootstrap processor
+	// Initialize all the CPUs in series.
 	for (uint64_t i = 0; i < pSMP->cpu_count; i++)
 	{
-		if (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id)
+		pSMP->cpus[i]->extra_argument = (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id);
+		
+		if (pSMP->cpus[i]->extra_argument)
 		{
-			g_BootstrapProcessorID.Store(i);
-			break;
+			CPUInit(pSMP->cpus[i]);
+		}
+		else
+		{
+			__atomic_store_n(&pSMP->cpus[i]->goto_address, &CPUInit, ATOMIC_DEFAULT_MEMORDER);
 		}
 	}
 	
-	if (g_BootstrapProcessorID.Load() == (uint64_t)-1)
+	while (g_CPUsInitialized.Load(ATOMIC_MEMORD_RELAXED) != (int)pSMP->cpu_count)
 	{
-		_term_puts("ERROR: Did not find this processor's index");
-		_hang();
+		Spinlock::SpinHint();
 	}
 	
-	for (uint64_t i = 0; i < pSMP->cpu_count; i++)
-	{
-		pSMP->cpus[i]->extra_argument = i;
-		
-		if (i == g_BootstrapProcessorID.Load())
-			CPUBootstrap(pSMP->cpus[i]);
-		else
-			__atomic_store_n(&pSMP->cpus[i]->goto_address, &CPUBootstrap, ATOMIC_DEFAULT_MEMORDER);
-	}
+	char procs[] = "All X processors have been bootstrapped.\n";
+	procs[4] = '0' + pSMP->cpu_count;
 	
-	
-	CPUWaitAll();
+	_term_puts(procs);
 	
 	_hang();
-	
 }

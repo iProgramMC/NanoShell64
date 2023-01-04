@@ -48,10 +48,15 @@ void Spinlock::Lock()
 
 void Spinlock::Unlock()
 {
+	/*
 	if (!m_lockBool.Exchange(false, ATOMIC_MEMORD_RELEASE))
 	{
 		// TODO: Error out. We're trying to release an unlocked spinlock.
 	}
+	*/
+	
+	//just do a store for now lol
+	m_lockBool.Store(false);
 }
 
 LockGuard::LockGuard(Spinlock& lock) : m_lock(lock)
