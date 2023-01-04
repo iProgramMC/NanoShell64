@@ -12,6 +12,7 @@
 #include <_limine.h>
 
 #include <Atomic.hpp>
+#include <Spinlock.hpp>
 
 // The Limine requests can be placed anywhere, but it is important that
 // the compiler does not optimise them away, so, usually, they should
@@ -49,6 +50,9 @@ volatile limine_smp_request g_SMPRequest =
 
 // note: these definitions are purely temporary
 
+Spinlock g_E9Spinlock;
+Spinlock g_TermSpinlock;
+
 extern "C" void _hang(void)
 {
 	__asm__("cli");
@@ -62,6 +66,7 @@ extern "C" void _outb(uint16_t port, uint8_t data)
 
 extern "C" void _e9_puts(const char* str)
 {
+	LockGuard lg(g_E9Spinlock);
 	while (*str)
 	{
 		_outb(0xE9, *str);
@@ -82,22 +87,22 @@ extern "C" size_t _strlen(const char* str)
 
 extern "C" void _term_puts(const char* str)
 {
-	
+	LockGuard lg(g_TermSpinlock);
 	g_TerminalRequest.response->write(g_TerminalRequest.response->terminals[0], str, _strlen(str));
 }
 
 Atomic<int> g_CPUsInitialized;
 
+// TODO: a sprintf() like function, and other string functions.
+
 // Since the pointer to the structure is passed into RDI, assuming
 // the x86_64 System V ABI, the first argument corresponds to RDI.
 void CPUBootstrap(limine_smp_info* pInfo)
 {
-	char pid[2];
-	pid[1] = 0;
-	pid[0] = '0' + pInfo->processor_id;
-	_e9_puts("Hello world from ");
-	_e9_puts(pid);
-	_e9_puts("!\n");
+	// The X will be replaced.
+	char hello_text[] = "Hello from processor #X!\n";
+	hello_text[22] = '0' + pInfo->processor_id;
+	_term_puts(hello_text);
 	
 	g_CPUsInitialized.FetchAdd(1);
 	
@@ -109,15 +114,12 @@ void CPUBootstrap(limine_smp_info* pInfo)
 			__asm__("":::"memory");
 		}
 		
-		int loaded = 0;
-		g_CPUsInitialized.Load(&loaded);
+		int loaded = g_CPUsInitialized.Load();
 		
-		char start[2];
-		start[1] = 0;
-		start[0] = '0' + loaded;
+		char procs[] = "X processors have been bootstrapped.\n";
+		procs[0] = '0' + loaded;
 		
-		_term_puts(start);
-		_term_puts(" processors have been bootstrapped.\n");
+		_term_puts(procs);
 	}
 	
 	_hang();
@@ -134,19 +136,18 @@ extern "C" void _start(void)
 		
 	limine_smp_response* pSMP = g_SMPRequest.response;
 	
+	_term_puts("NanoShell64 (TM), January 2023 - V0.001\n");
+	
 	// Since this is an SMP system, we should bootstrap the CPUs.
 	if (pSMP->cpu_count == 1)
 	{
-		_e9_puts("Found uniprocessor system\n");
+		_term_puts("Found uniprocessor system\n");
 	}
 	else
 	{
-		char chr[2];
-		chr[1] = 0;
-		chr[0] = '0' + pSMP->cpu_count;
-		_e9_puts("Found ");
-		_e9_puts(chr);
-		_e9_puts("-processor system\n");
+		char foundprocs[] = "Found X-processor system\n";
+		foundprocs[6] = '0' + pSMP->cpu_count;
+		_term_puts(foundprocs);
 	}
 	
 	// Boot strap each of the processors.
@@ -167,7 +168,7 @@ extern "C" void _start(void)
 	
 	if (thisProcessorIndex == (uint64_t)-1)
 	{
-		_e9_puts("ERROR: Did not find this processor's index");
+		_term_puts("ERROR: Did not find this processor's index");
 		_hang();
 	}
 	

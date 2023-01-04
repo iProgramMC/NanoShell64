@@ -23,14 +23,19 @@ bool Spinlock::IsLocked() const
 	return m_lockBool.Load();
 }
 
+bool Spinlock::TryLock()
+{
+	// "Exchange" puts "true" into the m_lockBool atomic boolean, and
+	// returns whatever was before.  If there was a 'false' it means
+	// we have acquired the lock and we are all good.
+	return !m_lockBool.Exchange(true, ATOMIC_MEMORD_ACQUIRE);
+}
+
 void Spinlock::Lock()
 {
 	while (true)
 	{
-		// "Exchange" puts "true" into the m_lockBool atomic boolean, and
-		// returns whatever was before.  If there was a 'false' it means
-		// we have acquired the lock and we are all good.
-		if (!m_lockBool.Exchange(true, ATOMIC_MEMORD_ACQUIRE))
+		if (TryLock())
 			break;
 		
 		// Spin until the lock is acquirable again.
@@ -47,4 +52,18 @@ void Spinlock::Unlock()
 	{
 		// TODO: Error out. We're trying to release an unlocked spinlock.
 	}
+}
+
+LockGuard::LockGuard(Spinlock& lock) : m_lock(lock)
+{
+	m_lock.Lock();
+}
+
+LockGuard::LockGuard(Spinlock& lock, AdoptLock) : m_lock(lock)
+{
+}
+
+LockGuard::~LockGuard()
+{
+	m_lock.Unlock();
 }
