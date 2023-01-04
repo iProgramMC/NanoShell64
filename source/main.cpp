@@ -93,7 +93,7 @@ extern "C" void _term_puts(const char* str)
 
 Atomic<int> g_CPUsInitialized;
 
-uint64_t g_BootstrapProcessorID = 0;
+Atomic<uint64_t> g_BootstrapProcessorID = 0;
 
 // TODO: a sprintf() like function, and other string functions.
 
@@ -110,7 +110,8 @@ void CPUBootstrap(limine_smp_info* pInfo)
 	
 	g_CPUsInitialized.FetchAdd(1);
 	
-	_hang();
+	if (processorID != g_BootstrapProcessorID.Load())
+		_hang();
 }
 
 void CPUWaitAll(void)
@@ -159,36 +160,30 @@ extern "C" void _start(void)
 	{
 		if (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id)
 		{
-			g_BootstrapProcessorID = i;
+			g_BootstrapProcessorID.Store(i);
 			break;
 		}
 	}
 	
-	if (g_BootstrapProcessorID == (uint64_t)-1)
+	if (g_BootstrapProcessorID.Load() == (uint64_t)-1)
 	{
 		_term_puts("ERROR: Did not find this processor's index");
 		_hang();
 	}
 	
-	// Mark the main CPU as initialized in the g_CPUsInitialized field.
-	g_CPUsInitialized.Store(1);
-	
 	for (uint64_t i = 0; i < pSMP->cpu_count; i++)
 	{
-		if (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id)
-		{
-			// we will bootstrap this processor last
-			continue;
-		}
-		
-		// writing to the goto_address of the BSP actually doesn't do anything, but let's do it anyways
 		pSMP->cpus[i]->extra_argument = i;
 		
-		// The spec says something about atomic writes, perhaps we should actually do that
-		__atomic_store_n(&pSMP->cpus[i]->goto_address, &CPUBootstrap, ATOMIC_DEFAULT_MEMORDER);
+		if (i == g_BootstrapProcessorID.Load())
+			CPUBootstrap(pSMP->cpus[i]);
+		else
+			__atomic_store_n(&pSMP->cpus[i]->goto_address, &CPUBootstrap, ATOMIC_DEFAULT_MEMORDER);
 	}
+	
 	
 	CPUWaitAll();
 	
-	CPUBootstrap(pSMP->cpus[g_BootstrapProcessorID]);
+	_hang();
+	
 }
