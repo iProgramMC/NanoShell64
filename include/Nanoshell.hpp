@@ -24,4 +24,13 @@ inline void *operator new[](size_t, void *p)   throw() { return p; }
 inline void  operator delete  (void *, void *) throw() { };
 inline void  operator delete[](void *, void *) throw() { };
 
+extern "C"
+{
+	void* memcpy(void* dst, const void* src, size_t n);
+	void* memset(void* dst, int c, size_t n);
+	char* strcpy(char* dst, const char* src);
+	char* strcat(char* dst, const char* src);
+	size_t strlen(const char * s);
+};
+
 #endif//_NANOSHELL_HPP

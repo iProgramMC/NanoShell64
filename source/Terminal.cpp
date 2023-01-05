@@ -39,17 +39,6 @@ void Terminal::E9Write(const char* str)
 	}
 }
 
-extern "C" size_t strlen(const char* str)
-{
-	size_t len = 0;
-	while (*str)
-	{
-		len++;
-		str++;
-	}
-	return len;
-}
-
 void Terminal::Write(const char* str)
 {
 	LockGuard lg(g_TermSpinlock);

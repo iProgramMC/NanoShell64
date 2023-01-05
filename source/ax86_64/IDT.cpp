@@ -13,19 +13,9 @@
 //  ***************************************************************
 #include <Arch.hpp>
 
-void __memset(void* pMemVoid, int c, size_t sz)
-{
-	uint8_t* bytes = (uint8_t*)pMemVoid;
-	while (sz)
-	{
-		*(bytes++) = c;
-		sz--;
-	}
-}
-
 void Arch::CPU::ClearIDT()
 {
-	__memset(&m_idt, 0, sizeof m_idt);
+	memset(&m_idt, 0, sizeof m_idt);
 }
 
 void Arch::CPU::LoadIDT()
