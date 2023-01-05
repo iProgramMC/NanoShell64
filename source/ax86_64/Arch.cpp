@@ -139,10 +139,7 @@ void Arch::CPU::InitAsBSP()
 		Spinlock::SpinHint();
 	}
 	
-	char procs[] = "All X processors have been initialized.\n";
-	procs[4] = '0' + pSMP->cpu_count;
-	
-	Terminal::Write(procs);
+	LogMsg("All %llu processors have been initialized.", pSMP->cpu_count);
 	
 	CPU::GetCurrent()->Go();
 }

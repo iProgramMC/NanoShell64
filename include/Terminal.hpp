@@ -19,8 +19,14 @@ namespace Terminal
 	// Writes a string to the terminal.
 	void Write(const char * str);
 	
+	// Writes a string to the terminal, and adds a new line.
+	void WriteLn(const char * str);
+	
 	// Writes a string to the E9 port.
 	void E9Write(const char * str);
+	
+	// Writes a string to the E9 port, and adds a new line.
+	void E9WriteLn(const char * str);
 };
 
 #endif//_TERMINAL_HPP

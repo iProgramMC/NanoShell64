@@ -34,6 +34,15 @@ extern "C"
 	char* strcpy(char* dst, const char* src);
 	char* strcat(char* dst, const char* src);
 	size_t strlen(const char * s);
+	int vsnprintf(char* buf, size_t sz, const char* fmt, va_list arg);
+	int snprintf(char* buf, size_t sz, const char* fmt, ...);
+	int sprintf(char* buf, const char* fmt, ...);
+
+	void LogMsg(const char* fmt, ...);
+	void LogMsgNoCR(const char* fmt, ...);
+
+	void SLogMsg(const char* fmt, ...);
+	void SLogMsgNoCR(const char* fmt, ...);
 };
 
 #endif//_NANOSHELL_HPP

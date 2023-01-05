@@ -29,10 +29,7 @@ void Arch::CPU::Init()
 	LoadGDT();
 	
 	// The X will be replaced.
-	char hello_text[] = "Hello from processor #X!\n";
-	hello_text[22] = '0' + m_processorID;
-	
-	Terminal::Write(hello_text);
+	LogMsg("Hello from processor #%d", m_processorID);
 	
 	g_CPUsInitialized.FetchAdd(1);
 }
@@ -40,6 +37,10 @@ void Arch::CPU::Init()
 void Arch::CPU::Go()
 {
 	// TODO: If the bootstrap processor, do some other stuff, like spawn an initial thread
+	if (m_bIsBSP)
+	{
+		LogMsg("I am the bootstrap processor, and I will soon spawn an initial task instead of printing this!");
+	}
 	
 	Arch::IdleLoop();
 }

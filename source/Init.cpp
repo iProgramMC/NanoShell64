@@ -7,8 +7,7 @@
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
 //  ***************************************************************
 
-#include <stdint.h>
-#include <stddef.h>
+#include <Nanoshell.hpp>
 #include <_limine.h>
 
 #include <Arch.hpp>
@@ -61,18 +60,14 @@ extern "C" void _start(void)
 	
 	RunAllConstructors();
 	
-	Terminal::Write("NanoShell64 (TM), January 2023 - V0.001\n");
+	LogMsg("NanoShell64 (TM), January 2023 - V0.001");
 	
 #ifdef TARGET_X86_64
 	Arch::APIC::EnsureOn();
 #endif
 	
-	// Since this is an SMP system, we should bootstrap the CPUs.
 	uint32_t processorCount = Arch::CPU::GetCount();
-	
-	char inittext[] = "X System Processor(s) - MultiProcessor Kernel\n";
-	inittext[0] = '0' + processorCount;
-	Terminal::Write(inittext);
+	LogMsg("%d System Processor%s - MultiProcessor Kernel", processorCount, processorCount == 1 ? "" : "s");
 	
 	// Initialize the other CPUs. This should not return.
 	Arch::CPU::InitAsBSP();

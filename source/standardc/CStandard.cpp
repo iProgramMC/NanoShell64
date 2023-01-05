@@ -1,5 +1,5 @@
 //  ***************************************************************
-//  Nanoshell.hpp - Creation date: 05/01/2023
+//  CStandard.cpp - Creation date: 05/01/2023
 //  -------------------------------------------------------------
 //  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
 //
@@ -9,7 +9,7 @@
 //  
 //  Module description:
 //      This module implements the standard C functions that may
-//    or may not be needed, such as memcpy, memset, strlen etc.
+//    not be needed, such as memcpy, memset, strlen etc.
 //
 //  ***************************************************************
 #include <Nanoshell.hpp>

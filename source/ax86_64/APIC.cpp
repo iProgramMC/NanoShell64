@@ -22,7 +22,7 @@ void Arch::APIC::EnsureOn()
 	
 	if (~edx & (1 << 9))
 	{
-		Terminal::Write("APIC is off. An APIC must be present before running NanoShell64.");
+		LogMsg("APIC is off. An APIC must be present before running NanoShell64.");
 		Arch::IdleLoop();
 	}
 }
