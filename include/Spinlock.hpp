@@ -17,25 +17,53 @@ private:
 	Atomic<bool> m_lockBool;
 	
 public:
+	Spinlock() : m_lockBool(false) {}
+
 	// Checks if a spin lock is locked. Not sure why you would need this.
-	bool IsLocked() const;
+	bool IsLocked() const
+	{
+		return m_lockBool.Load();
+	}
 	
 	// Tries to lock the current Spinlock object. If the lock is already
 	// taken, this will return 'false', but if the lock has been acquired
 	// through this function, this will return 'true'.
-	bool TryLock();
+	bool TryLock()
+	{
+		return !m_lockBool.TestAndSet(ATOMIC_MEMORD_ACQUIRE);
+	}
 	
 	// Lock the current Spinlock object. If the lock is already taken at
 	// the time of this call, this function will spin and wait until it's
 	// no longer locked.
-	void Lock();
+	inline void Lock()
+	{
+		while (true)
+		{
+			if (!m_lockBool.TestAndSet(ATOMIC_MEMORD_ACQUIRE)) break;
+			while (m_lockBool.Load(ATOMIC_MEMORD_ACQUIRE))
+			{
+				Spinlock::SpinHint();
+			}
+		}
+	}
 	
 	// Unlock the current Spinlock object.
-	void Unlock();
+	void Unlock()
+	{
+		m_lockBool.Clear(ATOMIC_MEMORD_RELEASE);
+	}
 	
 	// Hints to the current processor that it is currently spinning.
 	// This is done on x86_64 with a "pause" instruction.
-	static void SpinHint();
+	static void SpinHint()
+	{
+		#ifdef TARGET_X86_64
+			__builtin_ia32_pause();
+		#else
+			#warning "Spinlock may benefit from adding a pause instruction or similar"
+		#endif
+	}
 };
 
 // Note: Currently the only viable locking strategy to implement right now is

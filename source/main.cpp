@@ -59,17 +59,30 @@ extern "C" void _hang(void)
 	for (;;) __asm__("hlt");
 }
 
+extern "C" uint8_t _inb(unsigned short _port)
+{
+    uint8_t rv;
+    __asm__ ("inb %1, %0" : "=a" (rv) : "dN" (_port));
+    return rv;
+}
+
 extern "C" void _outb(uint16_t port, uint8_t data)
 {
 	__asm__("outb %0, %1"::"a"((uint8_t)data),"Nd"((uint16_t)port));
 }
 
+extern "C" void _ser_write(char chr)
+{
+	//while (~_inb(0x3F8 + 5) & 0x20) Spinlock::SpinHint();
+	_outb(0x3F8, chr);
+}
+
 extern "C" void _e9_puts(const char* str)
 {
-	LockGuard lg(g_E9Spinlock);
+	//LockGuard lg(g_E9Spinlock);
 	while (*str)
 	{
-		_outb(0xE9, *str);
+		_ser_write(*str);
 		str++;
 	}
 }
@@ -89,6 +102,24 @@ extern "C" void _term_puts(const char* str)
 {
 	LockGuard lg(g_TermSpinlock);
 	g_TerminalRequest.response->write(g_TerminalRequest.response->terminals[0], str, _strlen(str));
+}
+
+typedef void(*Constructor)();
+typedef void(*Destructor)();
+
+extern Constructor g_init_array_start[], g_init_array_end[];
+extern Destructor  g_fini_array_start[], g_fini_array_end[];
+
+void RunAllConstructors()
+{
+	for (auto func = g_init_array_start; func != g_init_array_end; func++)
+		(*func)();
+}
+
+void RunAllDestructors()
+{
+	for (auto func = g_fini_array_start; func != g_fini_array_end; func++)
+		(*func)();
 }
 
 Atomic<int> g_CPUsInitialized;
@@ -117,6 +148,8 @@ extern "C" void _start(void)
 	if (g_TerminalRequest.response == NULL || g_TerminalRequest.response->terminal_count < 1 || 
 	    g_SMPRequest.response == NULL)
 		_hang();
+	
+	RunAllConstructors();
 	
 	limine_smp_response* pSMP = g_SMPRequest.response;
 	

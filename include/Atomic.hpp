@@ -60,6 +60,16 @@ public:
 		__atomic_store_n(&m_content, store, memoryOrder);
 	}
 	
+	bool TestAndSet(int memoryOrder = ATOMIC_DEFAULT_MEMORDER)
+	{
+		return __atomic_test_and_set(&m_content, memoryOrder);
+	}
+	
+	void Clear(int memoryOrder = ATOMIC_DEFAULT_MEMORDER)
+	{
+		__atomic_clear(&m_content, memoryOrder);
+	}
+	
 	// This class of operations fetches the result AFTER the operation is performed.
 	
 	T AddFetch(T value, int memoryOrder = ATOMIC_DEFAULT_MEMORDER)
