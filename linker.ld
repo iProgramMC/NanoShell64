@@ -25,24 +25,15 @@ SECTIONS
 	} :text
 
 	/* Move to the next memory page for .rodata */
-	. += CONSTANT(MAXPAGESIZE);
+	. = ALIGN(CONSTANT(MAXPAGESIZE));
 
 	.rodata : {
 		*(.rodata .rodata.*)
 	} :rodata
 
 	/* Move to the next memory page for .data */
-	. += CONSTANT(MAXPAGESIZE);
+	. = ALIGN(CONSTANT(MAXPAGESIZE));
 
-	.data : {
-		*(.data .data.*)
-	} :data
-
-	.bss : {
-		*(COMMON)
-		*(.bss .bss.*)
-	} :data
-	
 	/* Global constructor array. */
 	.init_array : {
 		g_init_array_start = .;
@@ -56,6 +47,15 @@ SECTIONS
 		*(.fini_array)
 		g_fini_array_end = .;
 	}
+
+	.data : {
+		*(.data .data.*)
+	} :data
+	
+	.bss : {
+		*(COMMON)
+		*(.bss .bss.*)
+	} :data
 	
 	/* Discard .note.* and .eh_frame since they may cause issues on some hosts. */
 	/DISCARD/ : {
