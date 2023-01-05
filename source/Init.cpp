@@ -63,6 +63,10 @@ extern "C" void _start(void)
 	
 	Terminal::Write("NanoShell64 (TM), January 2023 - V0.001\n");
 	
+#ifdef TARGET_X86_64
+	Arch::APIC::EnsureOn();
+#endif
+	
 	// Since this is an SMP system, we should bootstrap the CPUs.
 	uint32_t processorCount = Arch::CPU::GetCount();
 	

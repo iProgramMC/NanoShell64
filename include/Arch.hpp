@@ -73,6 +73,12 @@ namespace Arch
 		TSS m_tss;
 	};
 	
+	namespace APIC
+	{
+		// Ensure the APIC is supported by checking CPUID
+		void EnsureOn();
+	};
+	
 #endif
 	
 	class CPU

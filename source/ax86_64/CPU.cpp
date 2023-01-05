@@ -39,11 +39,7 @@ void Arch::CPU::Init()
 
 void Arch::CPU::Go()
 {
-	// The X will be replaced.
-	char hello_text[] = "processor #X is going!\n";
-	hello_text[11] = '0' + m_processorID;
-	
-	Terminal::E9Write(hello_text);
+	// TODO: If the bootstrap processor, do some other stuff, like spawn an initial thread
 	
 	Arch::IdleLoop();
 }
