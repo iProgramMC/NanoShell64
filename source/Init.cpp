@@ -65,16 +65,10 @@ extern "C" void _start(void)
 	
 	// Since this is an SMP system, we should bootstrap the CPUs.
 	uint32_t processorCount = Arch::CPU::GetCount();
-	if (processorCount == 1)
-	{
-		Terminal::Write("Found uniprocessor system\n");
-	}
-	else
-	{
-		char foundprocs[] = "Found X-processor system\n";
-		foundprocs[6] = '0' + processorCount;
-		Terminal::Write(foundprocs);
-	}
+	
+	char inittext[] = "X System Processor(s) - MultiProcessor Kernel\n";
+	inittext[0] = '0' + processorCount;
+	Terminal::Write(inittext);
 	
 	// Initialize the other CPUs. This should not return.
 	Arch::CPU::InitAsBSP();

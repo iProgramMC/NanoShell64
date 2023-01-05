@@ -14,7 +14,9 @@
 
 namespace Arch
 {
-	#ifdef TARGET_X86_64
+#ifdef TARGET_X86_64
+	
+	#define C_IDT_ENTRIES
 	
 	struct TSS
 	{
@@ -27,6 +29,26 @@ namespace Arch
 		uint16_t m_iopb;
 	}
 	PACKED;
+	
+	struct IDT
+	{
+		struct IDTEntry
+		{
+			uint64_t m_offsetLow  : 16;
+			uint64_t m_segmentSel : 16;
+			uint64_t m_ist        : 3;
+			uint64_t m_reserved0  : 5;
+			uint64_t m_gateType   : 4;
+			uint64_t m_reserved1  : 1;
+			uint64_t m_dpl        : 2;
+			uint64_t m_present    : 1;
+			uint64_t m_offsetHigh : 48;
+			uint64_t m_reserved2  : 32;
+		}
+		PACKED;
+		
+		IDTEntry m_entries[256];
+	};
 	
 	// The GDT structure. It contains an array of uint64s, which represents
 	// each of the GDT entries, and potentially a TSS entry. (todo)
@@ -51,7 +73,7 @@ namespace Arch
 		TSS m_tss;
 	};
 	
-	#endif
+#endif
 	
 	class CPU
 	{
@@ -66,8 +88,11 @@ namespace Arch
 		// Whether we are the bootstrap processor or not.
 		bool m_bIsBSP;
 		
-		// The GDT this CPU uses.
+		// The GDT of this CPU.
 		GDT m_gdt;
+		
+		// The IDT of this CPU.
+		IDT m_idt;
 		
 		// Store other fields here such as current task, etc.
 		
@@ -76,10 +101,22 @@ namespace Arch
 	public:
 		CPU(uint32_t processorID, limine_smp_info* pSMPInfo, bool bIsBSP) : m_processorID(processorID), m_pSMPInfo(pSMPInfo), m_bIsBSP(bIsBSP)
 		{
+#ifdef TARGET_X86_64
+			ClearIDT();
+#endif
 		}
 		
+#ifdef TARGET_X86_64
 		// Load the GDT.
 		void LoadGDT();
+		
+		// Clear the IDT.
+		void ClearIDT();
+		
+		// Load the IDT.
+		// Note: Any ulterior changes should be done through an IPI to the CPU.
+		void LoadIDT();
+#endif
 		
 		// Setup the CPU.
 		void Init();
@@ -112,8 +149,8 @@ namespace Arch
 	// running any task, it can idle and not continue running on full throttle.
 	void IdleLoop();
 	
-	// x86_64 architecture specific parts.
-	#ifdef TARGET_X86_64
+	// x86_64 architecture specific functions.
+#ifdef TARGET_X86_64
 	
 	// Reads a single byte from an I/O port.
 	uint8_t ReadByte(uint16_t port);
@@ -141,7 +178,7 @@ namespace Arch
 	// Writes to a model specific register.
 	uint64_t ReadMSR(uint32_t msr);
 	
-	#endif
+#endif
 }
 
 #endif//_ARCH_HPP
