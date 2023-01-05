@@ -7,7 +7,8 @@ set NSPath=%CD%
 cd /d c:\Program Files\qemu
 set path=%path%;%NSPath%
 
-qemu-system-x86_64.exe -no-reboot -no-shutdown  ^
+qemu-system-x86_64.exe ^
+-d cpu_reset                                    ^
 -M q35                                          ^
 -m 256M                                         ^
 -smp 4                                          ^
@@ -18,7 +19,6 @@ qemu-system-x86_64.exe -no-reboot -no-shutdown  ^
 -accel tcg                                      ^
 -monitor telnet:127.0.0.1:55555,server,nowait
 
-:-d cpu_reset                                    ^
 : -s -S                                         -- for debugging with GDB
 : -serial COM7                                  -- to output the serial port to somewhere real
 : -kernel %nspath%/kernel.bin 

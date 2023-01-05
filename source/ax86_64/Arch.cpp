@@ -6,6 +6,13 @@
 //  ***************************************************************
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
 //  ***************************************************************
+//  
+//  Module description:
+//      This module implements the x86_64 architecture specific
+//    functions that don't work on a particular CPU object.
+//    (those reside in CPU.cpp)
+//
+//  ***************************************************************
 #include <Arch.hpp>
 #include <Spinlock.hpp>
 #include <EternalHeap.hpp>

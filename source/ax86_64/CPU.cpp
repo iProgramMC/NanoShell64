@@ -1,10 +1,15 @@
 //  ***************************************************************
-//  CPU.hpp - Creation date: 05/01/2023
+//  CPU.cpp - Creation date: 05/01/2023
 //  -------------------------------------------------------------
 //  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
 //
 //  ***************************************************************
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
+//  ***************************************************************
+//  
+//  Module description:
+//      This module implements the CPU object specific functions.
+//
 //  ***************************************************************
 #include <Arch.hpp>
 #include <Atomic.hpp>
@@ -19,6 +24,9 @@ void Arch::CPU::Init()
 {
 	// Write the GS base MSR.
 	Arch::WriteMSR(Arch::eMSR::KERNEL_GS_BASE, uint64_t(this));
+	
+	// Re-load the GDT.
+	LoadGDT();
 	
 	// The X will be replaced.
 	char hello_text[] = "Hello from processor #X!\n";

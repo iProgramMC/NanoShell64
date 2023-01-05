@@ -9,18 +9,50 @@
 #ifndef _ARCH_HPP
 #define _ARCH_HPP
 
-#include <stdint.h>
-#include <stddef.h>
+#include <Nanoshell.hpp>
 #include <_limine.h>
-
-// TODO: Move this somewhere else.
-inline void *operator new(size_t, void *p)     throw() { return p; }
-inline void *operator new[](size_t, void *p)   throw() { return p; }
-inline void  operator delete  (void *, void *) throw() { };
-inline void  operator delete[](void *, void *) throw() { };
 
 namespace Arch
 {
+	#ifdef TARGET_X86_64
+	
+	struct TSS
+	{
+		uint32_t m_reserved;
+		uint64_t m_rsp[3];
+		uint64_t m_reserved1;
+		uint64_t m_ist[7];
+		uint64_t m_reserved2;
+		uint16_t m_reserved3;
+		uint16_t m_iopb;
+	}
+	PACKED;
+	
+	// The GDT structure. It contains an array of uint64s, which represents
+	// each of the GDT entries, and potentially a TSS entry. (todo)
+	struct GDT
+	{
+		// The segment numbers.
+		enum
+		{
+			DESC_NULL,
+			DESC_16BIT_CODE,
+			DESC_16BIT_DATA,
+			DESC_32BIT_CODE,
+			DESC_32BIT_DATA,
+			DESC_64BIT_RING0_CODE,
+			DESC_64BIT_RING0_DATA,
+			DESC_64BIT_RING3_CODE,
+			DESC_64BIT_RING3_DATA,
+		};
+		
+		uint64_t m_BasicEntries[9];
+		
+		TSS m_tss;
+	};
+	
+	#endif
+	
 	class CPU
 	{
 		/**** CPU specific variables ****/
@@ -34,6 +66,9 @@ namespace Arch
 		// Whether we are the bootstrap processor or not.
 		bool m_bIsBSP;
 		
+		// The GDT this CPU uses.
+		GDT m_gdt;
+		
 		// Store other fields here such as current task, etc.
 		
 		
@@ -42,6 +77,9 @@ namespace Arch
 		CPU(uint32_t processorID, limine_smp_info* pSMPInfo, bool bIsBSP) : m_processorID(processorID), m_pSMPInfo(pSMPInfo), m_bIsBSP(bIsBSP)
 		{
 		}
+		
+		// Load the GDT.
+		void LoadGDT();
 		
 		// Setup the CPU.
 		void Init();
@@ -74,7 +112,7 @@ namespace Arch
 	// running any task, it can idle and not continue running on full throttle.
 	void IdleLoop();
 	
-	// x86_64 architecture specific instructions.
+	// x86_64 architecture specific parts.
 	#ifdef TARGET_X86_64
 	
 	// Reads a single byte from an I/O port.
