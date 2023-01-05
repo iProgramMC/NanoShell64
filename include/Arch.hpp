@@ -43,7 +43,10 @@ namespace Arch
 		{
 		}
 		
-		// Start the CPU.
+		// Setup the CPU.
+		void Init();
+		
+		// Start the CPU's idle loop.
 		void Go();
 		
 		/**** CPU agnostic operations ****/
@@ -59,6 +62,9 @@ namespace Arch
 		
 		// Static function to initialize a certain CPU.
 		static void Start(limine_smp_info* pInfo);
+		
+		// Get the current CPU.
+		static CPU* GetCurrent();
 	};
 	
 	// Waits until the next interrupt.

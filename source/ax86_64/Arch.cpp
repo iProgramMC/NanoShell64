@@ -9,6 +9,7 @@
 #include <Arch.hpp>
 #include <Spinlock.hpp>
 #include <EternalHeap.hpp>
+#include <Terminal.hpp>
 
 #ifdef TARGET_X86_64
 
@@ -70,7 +71,10 @@ void Arch::CPU::Start(limine_smp_info* pInfo)
 {
 	Arch::CPU* pCpu = (Arch::CPU*)pInfo->extra_argument;
 	
-	pCpu->Go();
+	pCpu->Init();
+	
+	if (!pCpu->m_bIsBSP)
+		pCpu->Go();
 }
 
 volatile limine_smp_request g_SMPRequest =
@@ -127,6 +131,13 @@ void Arch::CPU::InitAsBSP()
 	{
 		Spinlock::SpinHint();
 	}
+	
+	char procs[] = "All X processors have been initialized.\n";
+	procs[4] = '0' + pSMP->cpu_count;
+	
+	Terminal::Write(procs);
+	
+	CPU::GetCurrent()->Go();
 }
 
 
