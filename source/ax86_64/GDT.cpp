@@ -56,5 +56,5 @@ void Arch::CPU::LoadGDT()
 	
 	// Note: For now we do not need to reload segments such as CS and DS.
 	// We will need to however, once we remove the 16- and 32-bit segments.
-	__asm__("lgdt %0"::"m"(gdtr));
+	ASM("lgdt %0"::"m"(gdtr));
 }

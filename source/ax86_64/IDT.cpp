@@ -30,7 +30,7 @@ void Arch::CPU::LoadIDT()
 	idtr.m_idtLimit = sizeof m_idt - 1;
 	idtr.m_idtBase  = uint64_t(&m_idt);
 	
-	__asm__("lidt %0"::"m"(idtr));
+	ASM("lidt %0"::"m"(idtr));
 }
 
 

@@ -18,21 +18,27 @@ extern "C" {
 
 void* memcpy(void* dst, const void* src, size_t n)
 {
-	__asm__("rep movsb"::"c"(n),"D"(dst),"S"(src));
+	ASM("rep movsb"::"c"(n),"D"(dst),"S"(src));
+	return dst;
+}
+
+void* memquadcpy(uint64_t* dst, const uint64_t* src, size_t n)
+{
+	ASM("rep movsq"::"c"(n),"D"(dst),"S"(src));
 	return dst;
 }
 
 void* memset(void* dst, int c, size_t n)
 {
-	__asm__("rep stosb"::"c"(n),"D"(dst),"a"(c));
+	ASM("rep stosb"::"c"(n),"D"(dst),"a"(c));
 	return dst;
 }
 
 size_t strlen(const char * s)
 {
+	//optimization hint : https://github.com/bminor/glibc/blob/master/string/strlen.c
 	size_t sz = 0;
-	while (*s++)
-		sz++;
+	while (*s++) sz++;
 	return sz;
 }
 

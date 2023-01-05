@@ -22,7 +22,7 @@
 
 void Arch::Halt()
 {
-	__asm__("hlt":::"memory");
+	ASM("hlt":::"memory");
 }
 
 void Arch::IdleLoop()
@@ -34,23 +34,23 @@ void Arch::IdleLoop()
 uint8_t Arch::ReadByte(uint16_t port)
 {
     uint8_t rv;
-    __asm__ ("inb %1, %0" : "=a" (rv) : "dN" (port));
+    ASM("inb %1, %0" : "=a" (rv) : "dN" (port));
     return rv;
 }
 
 void Arch::WriteByte(uint16_t port, uint8_t data)
 {
-	__asm__("outb %0, %1"::"a"((uint8_t)data),"Nd"((uint16_t)port));
+	ASM("outb %0, %1"::"a"((uint8_t)data),"Nd"((uint16_t)port));
 }
 
 void Arch::DisableInterrupts()
 {
-	__asm__("cli":::"memory");
+	ASM("cli":::"memory");
 }
 
 void Arch::EnableInterrupts()
 {
-	__asm__("sti":::"memory");
+	ASM("sti":::"memory");
 }
 
 void Arch::WriteMSR(uint32_t msr, uint64_t value)
@@ -58,14 +58,14 @@ void Arch::WriteMSR(uint32_t msr, uint64_t value)
 	uint32_t edx = uint32_t(value >> 32);
 	uint32_t eax = uint32_t(value);
 	
-	__asm__("wrmsr"::"d"(edx),"a"(eax),"c"(msr));
+	ASM("wrmsr"::"d"(edx),"a"(eax),"c"(msr));
 }
 
 uint64_t Arch::ReadMSR(uint32_t msr)
 {
 	uint32_t edx, eax;
 	
-	__asm__("rdmsr":"=d"(edx),"=a"(eax):"c"(msr));
+	ASM("rdmsr":"=d"(edx),"=a"(eax):"c"(msr));
 	
 	return uint64_t(edx) << 32 | eax;
 }

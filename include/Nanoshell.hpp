@@ -24,9 +24,12 @@ inline void *operator new[](size_t, void *p)   throw() { return p; }
 inline void  operator delete  (void *, void *) throw() { };
 inline void  operator delete[](void *, void *) throw() { };
 
+#define ASM __asm__ __volatile__
+
 extern "C"
 {
 	void* memcpy(void* dst, const void* src, size_t n);
+	void* memquadcpy(uint64_t* dst, const uint64_t* src, size_t n);
 	void* memset(void* dst, int c, size_t n);
 	char* strcpy(char* dst, const char* src);
 	char* strcat(char* dst, const char* src);
