@@ -1,5 +1,5 @@
 //  ***************************************************************
-//  main.cpp - Creation date: 04/01/2023
+//  Init.cpp - Creation date: 04/01/2023
 //  -------------------------------------------------------------
 //  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
 //
@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <_limine.h>
 
+#include <Arch.hpp>
 #include <Atomic.hpp>
 #include <Spinlock.hpp>
 
@@ -53,36 +54,12 @@ volatile limine_smp_request g_SMPRequest =
 Spinlock g_E9Spinlock;
 Spinlock g_TermSpinlock;
 
-extern "C" void _hang(void)
-{
-	//__asm__("cli");
-	for (;;) __asm__("hlt");
-}
-
-extern "C" uint8_t _inb(unsigned short _port)
-{
-    uint8_t rv;
-    __asm__ ("inb %1, %0" : "=a" (rv) : "dN" (_port));
-    return rv;
-}
-
-extern "C" void _outb(uint16_t port, uint8_t data)
-{
-	__asm__("outb %0, %1"::"a"((uint8_t)data),"Nd"((uint16_t)port));
-}
-
-extern "C" void _ser_write(char chr)
-{
-	//while (~_inb(0x3F8 + 5) & 0x20) Spinlock::SpinHint();
-	_outb(0x3F8, chr);
-}
-
 extern "C" void _e9_puts(const char* str)
 {
 	//LockGuard lg(g_E9Spinlock);
 	while (*str)
 	{
-		_ser_write(*str);
+		Arch::WriteByte(0xE9, *str);
 		str++;
 	}
 }
@@ -138,7 +115,7 @@ void CPUInit(limine_smp_info* pInfo)
 	g_CPUsInitialized.FetchAdd(1);
 	
 	if (!pInfo->extra_argument)
-		_hang();
+		Arch::IdleLoop();
 }
 
 // The following will be our kernel's entry point.
@@ -147,7 +124,7 @@ extern "C" void _start(void)
 	// Ensure we have our responses.
 	if (g_TerminalRequest.response == NULL || g_TerminalRequest.response->terminal_count < 1 || 
 	    g_SMPRequest.response == NULL)
-		_hang();
+		Arch::IdleLoop();
 	
 	RunAllConstructors();
 	
@@ -192,5 +169,5 @@ extern "C" void _start(void)
 	
 	_term_puts(procs);
 	
-	_hang();
+	Arch::IdleLoop();
 }
