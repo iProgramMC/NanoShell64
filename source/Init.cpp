@@ -14,6 +14,7 @@
 #include <Arch.hpp>
 #include <Atomic.hpp>
 #include <Spinlock.hpp>
+#include <EternalHeap.hpp>
 
 // The Limine requests can be placed anywhere, but it is important that
 // the compiler does not optimise them away, so, usually, they should
@@ -39,14 +40,6 @@ volatile limine_hhdm_request g_HHDMRequest =
 	.id = LIMINE_HHDM_REQUEST,
 	.revision = 0,
 	.response = NULL,
-};
-
-volatile limine_smp_request g_SMPRequest =
-{
-	.id = LIMINE_SMP_REQUEST,
-	.revision = 0,
-	.response = NULL,
-	.flags = 0,
 };
 
 // note: these definitions are purely temporary
@@ -99,36 +92,18 @@ void RunAllDestructors()
 		(*func)();
 }
 
-Atomic<int> g_CPUsInitialized;
-
-// TODO: a sprintf() like function, and other string functions.
-
-// Since the pointer to the structure is passed into RDI, assuming
-// the x86_64 System V ABI, the first argument corresponds to RDI.
-void CPUInit(limine_smp_info* pInfo)
-{
-	// The X will be replaced.
-	char hello_text[] = "Hello from processor #X!\n";
-	hello_text[22] = '0' + pInfo->processor_id;
-	_term_puts(hello_text);
-	
-	g_CPUsInitialized.FetchAdd(1);
-	
-	if (!pInfo->extra_argument)
-		Arch::IdleLoop();
-}
-
 // The following will be our kernel's entry point.
 extern "C" void _start(void)
 {
 	// Ensure we have our responses.
-	if (g_TerminalRequest.response == NULL || g_TerminalRequest.response->terminal_count < 1 || 
-	    g_SMPRequest.response == NULL)
+	if (g_TerminalRequest.response == NULL || g_TerminalRequest.response->terminal_count < 1)
 		Arch::IdleLoop();
 	
 	RunAllConstructors();
 	
-	limine_smp_response* pSMP = g_SMPRequest.response;
+	limine_smp_response* pSMP = Arch::CPU::GetSMPResponse();
+	if (!pSMP)
+		Arch::IdleLoop();
 	
 	_term_puts("NanoShell64 (TM), January 2023 - V0.001\n");
 	
@@ -144,28 +119,10 @@ extern "C" void _start(void)
 		_term_puts(foundprocs);
 	}
 	
-	// Initialize all the CPUs in series.
-	for (uint64_t i = 0; i < pSMP->cpu_count; i++)
-	{
-		pSMP->cpus[i]->extra_argument = (pSMP->bsp_lapic_id == pSMP->cpus[i]->lapic_id);
-		
-		if (pSMP->cpus[i]->extra_argument)
-		{
-			CPUInit(pSMP->cpus[i]);
-		}
-		else
-		{
-			__atomic_store_n(&pSMP->cpus[i]->goto_address, &CPUInit, ATOMIC_DEFAULT_MEMORDER);
-		}
-	}
-	
-	while (g_CPUsInitialized.Load(ATOMIC_MEMORD_RELAXED) != (int)pSMP->cpu_count)
-	{
-		Spinlock::SpinHint();
-	}
+	Arch::CPU::InitAsBSP();
 	
 	char procs[] = "All X processors have been bootstrapped.\n";
-	procs[4] = '0' + pSMP->cpu_count;
+	procs[4] = '0' + Arch::CPU::GetCount();
 	
 	_term_puts(procs);
 	
