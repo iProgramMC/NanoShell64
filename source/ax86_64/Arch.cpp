@@ -18,7 +18,32 @@
 #include <EternalHeap.hpp>
 #include <Terminal.hpp>
 
-#ifdef TARGET_X86_64
+volatile limine_hhdm_request g_HHDMRequest =
+{
+	.id = LIMINE_HHDM_REQUEST,
+	.revision = 0,
+	.response = NULL,
+};
+
+limine_hhdm_response* Arch::CPU::GetHHDMResponse()
+{
+	return g_HHDMRequest.response;
+}
+
+uintptr_t Arch::GetHHDMOffset()
+{
+	return g_HHDMRequest.response->offset;
+}
+
+void Arch::WritePhys(uintptr_t ptr, uint32_t thing)
+{
+	*((uint32_t*)(GetHHDMOffset() + ptr)) = thing;
+}
+
+uint32_t Arch::ReadPhys(uintptr_t ptr)
+{
+	return *((uint32_t*)(GetHHDMOffset() + ptr));
+}
 
 void Arch::Halt()
 {
@@ -144,5 +169,11 @@ void Arch::CPU::InitAsBSP()
 	CPU::GetCurrent()->Go();
 }
 
-
-#endif//TARGET_X86_64
+Arch::CPU* Arch::CPU::GetCPU(uint64_t pid)
+{
+	limine_smp_response* resp = g_SMPRequest.response;
+	
+	if (pid >= resp->cpu_count) return NULL;
+	
+	return (CPU*)(resp->cpus[pid]->extra_argument);
+}

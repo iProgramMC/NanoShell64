@@ -30,26 +30,6 @@ namespace Arch
 	}
 	PACKED;
 	
-	struct IDT
-	{
-		struct IDTEntry
-		{
-			uint64_t m_offsetLow  : 16;
-			uint64_t m_segmentSel : 16;
-			uint64_t m_ist        : 3;
-			uint64_t m_reserved0  : 5;
-			uint64_t m_gateType   : 4;
-			uint64_t m_reserved1  : 1;
-			uint64_t m_dpl        : 2;
-			uint64_t m_present    : 1;
-			uint64_t m_offsetHigh : 48;
-			uint64_t m_reserved2  : 32;
-		}
-		PACKED;
-		
-		IDTEntry m_entries[256];
-	};
-	
 	// The GDT structure. It contains an array of uint64s, which represents
 	// each of the GDT entries, and potentially a TSS entry. (todo)
 	struct GDT
@@ -73,10 +53,74 @@ namespace Arch
 		TSS m_tss;
 	};
 	
+	struct IDT
+	{
+		struct Entry
+		{
+			// Byte 0, 1
+			uint64_t m_offsetLow  : 16;
+			// Byte 2, 3
+			uint64_t m_segmentSel : 16;
+			// Byte 4
+			uint64_t m_ist        : 3;
+			uint64_t m_reserved0  : 5;
+			// Byte 5
+			uint64_t m_gateType   : 4;
+			uint64_t m_reserved1  : 1;
+			uint64_t m_dpl        : 2;
+			uint64_t m_present    : 1;
+			// Byte 6, 7, 8, 9, 10, 11
+			uint64_t m_offsetHigh : 48;
+			// Byte 12, 13, 14, 15
+			uint64_t m_reserved2  : 32;
+			
+			Entry() = default;
+			
+			Entry(uintptr_t handler, uint8_t ist = 0, uint8_t dpl = 0)
+			{
+				memset(this, 0, sizeof *this);
+				
+				m_offsetLow  = handler & 0xFFFF;
+				m_offsetHigh = handler >> 16;
+				m_gateType   = 0xE;
+				m_dpl        = dpl;
+				m_ist        = ist;
+				m_present    = handler != 0;
+				m_segmentSel = GDT::DESC_64BIT_RING0_CODE;
+			}
+		}
+		PACKED;
+		
+		Entry m_entries[256];
+		
+		void SetEntry(uint8_t iv, Entry entry)
+		{
+			m_entries[iv] = entry;
+		}
+	};
+	
 	namespace APIC
 	{
 		// Ensure the APIC is supported by checking CPUID
 		void EnsureOn();
+		
+		// Initialize the APIC for this CPU.
+		void Init();
+		
+		// Write a register.
+		void WriteReg(uint32_t reg, uint32_t value);
+		
+		// Read a register.
+		uint32_t ReadReg(uint32_t reg);
+		
+		// Get the LAPIC's base address. This is not offset by the HHDM.
+		uintptr_t GetLapicBasePhys();
+		
+		// Get the LAPIC's base address. This is offset by the HHDM.
+		uintptr_t GetLapicBase();
+		
+		// On Interrupt.
+		void OnInterrupt();
 	};
 	
 #endif
@@ -102,15 +146,8 @@ namespace Arch
 		
 		// Store other fields here such as current task, etc.
 		
-		
-		/**** CPU specific operations ****/
-	public:
-		CPU(uint32_t processorID, limine_smp_info* pSMPInfo, bool bIsBSP) : m_processorID(processorID), m_pSMPInfo(pSMPInfo), m_bIsBSP(bIsBSP)
-		{
-#ifdef TARGET_X86_64
-			ClearIDT();
-#endif
-		}
+		/**** Private CPU object functions. ****/
+	private:
 		
 #ifdef TARGET_X86_64
 		// Load the GDT.
@@ -123,12 +160,35 @@ namespace Arch
 		// Note: Any ulterior changes should be done through an IPI to the CPU.
 		void LoadIDT();
 #endif
+		/**** Operations that should be run within this CPU's context, but are otherwise public ****/
+	public:
 		
 		// Setup the CPU.
 		void Init();
 		
 		// Start the CPU's idle loop.
 		void Go();
+		
+		// Set an interrupt gate.
+		void SetInterruptGate(uint8_t intNum, uintptr_t fnHandler, uint8_t ist = 0, uint8_t dpl = 0);
+		
+		/**** Operations that can be performed on a CPU object from anywhere. ****/
+	public:
+		CPU(uint32_t processorID, limine_smp_info* pSMPInfo, bool bIsBSP) : m_processorID(processorID), m_pSMPInfo(pSMPInfo), m_bIsBSP(bIsBSP)
+		{
+#ifdef TARGET_X86_64
+			ClearIDT();
+#endif
+		}
+		
+		// Get whether this CPU is the bootstrap CPU.
+		bool IsBootstrap() const
+		{
+			return m_bIsBSP;
+		}
+		
+		// Send this CPU an IPI.
+		void SendTestIPI();
 		
 		/**** CPU agnostic operations ****/
 	public:
@@ -141,11 +201,23 @@ namespace Arch
 		// Get the SMP request's response.
 		static limine_smp_response* GetSMPResponse();
 		
+		// Get the HHDM request's response.
+		static limine_hhdm_response* GetHHDMResponse();
+		
 		// Static function to initialize a certain CPU.
 		static void Start(limine_smp_info* pInfo);
 		
 		// Get the current CPU.
 		static CPU* GetCurrent();
+		
+		// Get the CPU with the specified processor ID.
+		static CPU* GetCPU(uint64_t pid);
+		
+		// Relating to this, check if the current processor is the BSP.
+		static bool AreWeBootstrap()
+		{
+			return GetCurrent()->IsBootstrap();
+		}
 	};
 	
 	// Waits until the next interrupt.
@@ -178,11 +250,22 @@ namespace Arch
 		KERNEL_GS_BASE = 0xC0000102,
 	};
 	
+	// Get the HHDM offset (higher half direct map).
+	uintptr_t GetHHDMOffset();
+	
 	// Writes to a model specific register.
 	void WriteMSR(uint32_t msr, uint64_t value);
 	
 	// Writes to a model specific register.
 	uint64_t ReadMSR(uint32_t msr);
+	
+	// Write a 32-bit integer to any address within physical memory.
+	// This assumes an HHDM is present and the entire physical address space is mapped.
+	void WritePhys(uintptr_t ptr, uint32_t thing);
+	
+	// Read a 32-bit integer from any address within physical memory.
+	// This assumes an HHDM is present and the entire physical address space is mapped.
+	uint32_t ReadPhys(uintptr_t ptr);
 	
 #endif
 }

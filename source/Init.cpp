@@ -26,13 +26,6 @@ volatile limine_bootloader_info_request g_BootloaderInfoRequest =
 	.response = NULL,
 };
 
-volatile limine_hhdm_request g_HHDMRequest =
-{
-	.id = LIMINE_HHDM_REQUEST,
-	.revision = 0,
-	.response = NULL,
-};
-
 typedef void(*Constructor)();
 typedef void(*Destructor)();
 
@@ -55,7 +48,7 @@ void RunAllDestructors()
 extern "C" void _start(void)
 {
 	// Ensure Limine has set up these features.
-	if (!Terminal::CheckResponse() || !Arch::CPU::GetSMPResponse())
+	if (!Terminal::CheckResponse() || !Arch::CPU::GetSMPResponse() || !Arch::CPU::GetHHDMResponse())
 		Arch::IdleLoop();
 	
 	RunAllConstructors();

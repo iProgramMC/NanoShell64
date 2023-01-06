@@ -23,10 +23,13 @@ extern "C" void _term_puts(const char* str);
 void Arch::CPU::Init()
 {
 	// Write the GS base MSR.
-	Arch::WriteMSR(Arch::eMSR::KERNEL_GS_BASE, uint64_t(this));
+	WriteMSR(Arch::eMSR::KERNEL_GS_BASE, uint64_t(this));
 	
 	// Re-load the GDT.
 	LoadGDT();
+	
+	// Initialize the APIC on this CPU.
+	APIC::Init();
 	
 	// The X will be replaced.
 	LogMsg("Hello from processor #%d", m_processorID);
@@ -40,6 +43,10 @@ void Arch::CPU::Go()
 	if (m_bIsBSP)
 	{
 		LogMsg("I am the bootstrap processor, and I will soon spawn an initial task instead of printing this!");
+		
+		// Since all other processors are running, try sending an IPI to processor 1.
+		CPU* p1 = GetCPU(1);
+		p1->SendTestIPI();
 	}
 	
 	Arch::IdleLoop();
@@ -50,3 +57,8 @@ Arch::CPU* Arch::CPU::GetCurrent()
 	return (CPU*)ReadMSR(Arch::eMSR::KERNEL_GS_BASE);
 }
 
+// Set the CPU's interrupt gate to the following handler.
+void Arch::CPU::SetInterruptGate(uint8_t intNum, uintptr_t fnHandler, uint8_t ist, uint8_t dpl)
+{
+	m_idt.SetEntry(intNum, IDT::Entry(fnHandler, ist, dpl));
+}
