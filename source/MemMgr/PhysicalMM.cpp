@@ -88,3 +88,80 @@ void PhysicalMM::Init()
 	}
 }
 
+uintptr_t PhysicalMM::AllocatePage()
+{
+	LockGuard lg (s_PMMSpinlock);
+	
+	// browse through the whole BitmapPart chain
+	BitmapPart* bmp = s_pFirstBMPart;
+	while (bmp)
+	{
+		// Look through all the bits.
+		size_t nBitsArrLen = (bmp->m_length + 7) / 8;
+		
+		for (uint64_t i = 0; i < nBitsArrLen; i++)
+		{
+			const uint64_t bit = bmp->m_bits[i];
+			
+			// If there are no bits free here, skip
+			if (bit == ~0ULL) continue;
+			
+			// Which bit was zero?
+			for (uint64_t j = 0; j < 64; j++)
+			{
+				if (~bit & (1 << j))
+				{
+					bmp->m_bits[i] |= (1 << j);
+					// Return this page.
+					return bmp->m_startAddr + PAGE_SIZE * (i * 64 + j);
+				}
+			}
+		}
+		
+		bmp = bmp->m_pLink;
+	}
+	
+	return INVALID_PAGE;
+}
+
+void PhysicalMM::FreePage(uintptr_t page)
+{
+	LockGuard lg (s_PMMSpinlock);
+	
+	// Find the bitmap part where this page resides;
+	BitmapPart* bmp = s_pFirstBMPart;
+	while (bmp)
+	{
+		if (bmp->m_startAddr <= page) break;
+		
+		bmp = bmp->m_pLink;
+	}
+	
+	if (!bmp)
+	{
+		SLogMsg("Error, trying to free page %p, not within any of our bitmap parts", page);
+		return;
+	}
+	
+	// just clear the bit
+	page -= bmp->m_startAddr;
+	page /= PAGE_SIZE;
+	
+	uint64_t i, j;
+	i = page / 64;
+	j = page % 64;
+	
+	bmp->m_bits[i] &= ~(1 << j);
+}
+
+void PhysicalMM::Test()
+{
+	// The two printed addresses should ideally be the same.
+	uintptr_t addr = PhysicalMM::AllocatePage();
+	LogMsg("Addr: %p", addr);
+	PhysicalMM::FreePage(addr);
+	
+	addr = PhysicalMM::AllocatePage();
+	LogMsg("Addr: %p", addr);
+	PhysicalMM::FreePage(addr);
+}

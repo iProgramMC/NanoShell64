@@ -21,6 +21,8 @@ constexpr uint64_t PAGE_SIZE = 4096;
 
 namespace PhysicalMM
 {
+	constexpr uintptr_t INVALID_PAGE = 0;
+	
 	struct BitmapPart
 	{
 		// The link to the next BitmapPart entry.
@@ -46,6 +48,17 @@ namespace PhysicalMM
 	// Initializes the PMM using the Limine memory map request.
 	// This function must be run on the bootstrap CPU.
 	void Init();
+	
+	// Allocate a new page within the PMM.
+	// Note: The hint reference should be treated as an opaque value and is designed for quick successive allocations.
+	//uintptr_t AllocatePage(uint64_t& hint);
+	uintptr_t AllocatePage();
+	
+	// Free a page within the PMM.
+	void FreePage(uintptr_t page);
+	
+	// Test out the PMM.
+	void Test();
 };
 
 #endif//_MEMORY_MANAGER_HPP
