@@ -13,6 +13,9 @@
 
 namespace Terminal
 {
+	// Called when the kernel first starts up.
+	void Setup();
+	
 	// Called when the kernel first starts up. Checks Limine's response field.
 	bool CheckResponse();
 	

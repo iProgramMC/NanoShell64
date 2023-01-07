@@ -4,6 +4,9 @@
 
 NanoShell64 is a 64-bit operating system designed with SMP in mind.
 
+The project is wholly licensed under the GNU General Public License V3, **except the following**:
+- [Limine Terminal](source/LimineTerm): https://github.com/limine-bootloader/terminal
+
 #### Be advised this is alpha-level software and you should not expect any stability from it.
 
 NOTE: You need Limine V3.18.3, 3.0 or older doesn't work for some reason
