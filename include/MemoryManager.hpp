@@ -138,14 +138,14 @@ namespace VMM
 		// Gets the PML4 pointer as a virtual address.
 		PML4* GetPML4(int index);
 		
-		// Gets the current page mapping from the CR3.
-		static PageMapping* GetFromCR3();
-		
 		// Clones a page mapping.
-		static PageMapping* Clone(PageMapping* pPageMapping);
+		PageMapping* Clone();
 		
 		// Switches the executing CPU to use this page mapping.
 		void SwitchTo();
+		
+		// Gets the current page mapping from the CR3.
+		static PageMapping* GetFromCR3();
 	};
 }
 

@@ -31,7 +31,7 @@ void Arch::CPU::Init()
 	LoadGDT();
 	
 	// Clone the page mapping and assign it to this CPU.
-	m_pPageMap = PageMapping::Clone(PageMapping::GetFromCR3());
+	m_pPageMap = PageMapping::GetFromCR3()->Clone();
 	
 	// Initialize the APIC on this CPU.
 	APIC::Init();

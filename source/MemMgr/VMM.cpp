@@ -59,7 +59,7 @@ void PageMapping::SwitchTo()
 	Arch::WriteCR3((uintptr_t)this - Arch::GetHHDMOffset());
 }
 
-PageMapping* PageMapping::Clone(PageMapping* pPM)
+PageMapping* PageMapping::Clone()
 {
 	uintptr_t pmPage = PMM::AllocatePage();
 	
@@ -78,12 +78,12 @@ PageMapping* PageMapping::Clone(PageMapping* pPM)
 	{
 		/*
 		// If there is no PML4, continue;
-		PML4* pOldPML4 = pPM->GetPML4(i);
+		PML4* pOldPML4 = GetPML4(i);
 		if (!pOldPML4) continue;
 		
-		PageEntry& oldEnt = pPM->m_entries[i];
+		PageEntry& oldEnt = m_entries[i];
 		
-		PML4* pPML4 = ClonePML4(pPM->GetPML4(i));
+		PML4* pPML4 = ClonePML4(GetPML4(i));
 		
 		// Build a page entry.
 		PageEntry entry = oldEnt;
@@ -108,7 +108,7 @@ PageMapping* PageMapping::Clone(PageMapping* pPM)
 	// Just copy the other 256.
 	for (int i = 256; i < 512; i++)
 	{
-		PageEntry& oldEnt = pPM->m_entries[i];
+		PageEntry& oldEnt = m_entries[i];
 		pNewPM->m_entries[i].m_data = oldEnt.m_data;
 	}
 	
