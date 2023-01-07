@@ -94,6 +94,24 @@ namespace VMM
 			bool m_execDisable  : 1;
 		};
 		uint64_t m_data;
+		
+		PageEntry() = default;
+		PageEntry(uint64_t addr, bool rw, bool us, bool xd, bool pop, bool nap, bool pr = true,
+		          int pk = 0, bool wt = false, bool cd = false, bool pat = false, bool glb = false) // useless stuff
+		{
+			m_address       = addr >> 12;
+			m_readWrite     = rw;
+			m_present       = pr;
+			m_supervisor    = us;
+			m_execDisable   = xd;
+			m_partOfPmm     = pop;
+			m_needAllocPage = nap;
+			m_writeThrough  = wt;
+			m_cacheDisable  = cd;
+			m_pat           = pat;
+			m_global        = glb;
+			m_protKey       = pk;
+		}
 	};
 	
 	struct PageTable
@@ -105,6 +123,9 @@ namespace VMM
 		{
 			return &m_entries[index];
 		}
+		
+		// Clone the page table.
+		PageTable* Clone();
 	};
 	
 	struct PageDirectory
@@ -113,6 +134,9 @@ namespace VMM
 		
 		// Gets the page table pointer as a virtual address.
 		PageTable* GetPageTable(int index);
+		
+		// Clones the page directory.
+		PageDirectory* Clone();
 	};
 	
 	struct PML3 // PDPT
@@ -121,31 +145,35 @@ namespace VMM
 		
 		// Gets the page table pointer as a virtual address.
 		PageDirectory* GetPageDirectory(int index);
-	};
-	
-	struct PML4
-	{
-		PageEntry m_entries[512];
 		
-		// Gets the page table pointer as a virtual address.
-		PML3* GetPML3(int index);
+		// Clones the PML3.
+		PML3* Clone();
 	};
 	
 	struct PageMapping
 	{
 		PageEntry m_entries[512];
 		
-		// Gets the PML4 pointer as a virtual address.
-		PML4* GetPML4(int index);
+		// Gets the current page mapping from the CR3.
+		static PageMapping* GetFromCR3();
+		
+		// Gets the PML3 pointer as a virtual address.
+		PML3* GetPML3(int index);
 		
 		// Clones a page mapping.
-		PageMapping* Clone();
+		PageMapping* Clone(bool keepLowerHalf = true);
 		
 		// Switches the executing CPU to use this page mapping.
 		void SwitchTo();
 		
-		// Gets the current page mapping from the CR3.
-		static PageMapping* GetFromCR3();
+		// Set a page mapping's page entry at a particular address.
+		bool MapPage(uintptr_t addr, const PageEntry & pe);
+		
+		// Map a new page in. For now, not demand paged -- we need to wait until we add interrupts.
+		bool MapPage(uintptr_t addr, bool rw = true, bool super = false, bool xd = true);
+		
+		// Removes a page mapping, and any now empty levels that it resided in.
+		void UnmapPage(uintptr_t addr, bool removeUpperLevels = true);
 	};
 }
 

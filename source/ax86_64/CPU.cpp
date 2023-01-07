@@ -30,8 +30,26 @@ void Arch::CPU::Init()
 	// Re-load the GDT.
 	LoadGDT();
 	
-	// Clone the page mapping and assign it to this CPU.
-	m_pPageMap = PageMapping::GetFromCR3()->Clone();
+	// Clone the page mapping and assign it to this CPU. This will
+	// ditch the lower half mapping that the bootloader has provided us.
+	m_pPageMap = PageMapping::GetFromCR3()->Clone(false);
+	
+	// We shall at least try to map a new page in. Use the new fangled tech.
+	uintptr_t addr = 0x100000;
+	
+	bool result = m_pPageMap->MapPage(addr);
+	
+	if (!result)
+	{
+		LogMsg("Couldn't MapPage");
+	}
+	else
+	{
+		// try out our new fangled mapping!
+		*((uint64_t*)addr) = 0xFEDCBA9876543210 + m_processorID;
+		
+		LogMsg("Got back: %p", *((uint64_t*)addr));
+	}
 	
 	// Initialize the APIC on this CPU.
 	APIC::Init();
