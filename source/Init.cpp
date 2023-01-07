@@ -14,6 +14,7 @@
 #include <Atomic.hpp>
 #include <Spinlock.hpp>
 #include <Terminal.hpp>
+#include <MemoryManager.hpp>
 
 // The Limine requests can be placed anywhere, but it is important that
 // the compiler does not optimise them away, so, usually, they should
@@ -55,12 +56,14 @@ extern "C" void _start(void)
 	
 	LogMsg("NanoShell64 (TM), January 2023 - V0.001");
 	
+	PhysicalMM::Init();
+	
 #ifdef TARGET_X86_64
 	Arch::APIC::EnsureOn();
 #endif
 	
 	uint32_t processorCount = Arch::CPU::GetCount();
-	LogMsg("%d System Processor%s - MultiProcessor Kernel", processorCount, processorCount == 1 ? "" : "s");
+	LogMsg("%d System Processor%s [%llu Kb Memory] MultiProcessor Kernel", processorCount, processorCount == 1 ? "" : "s", PhysicalMM::GetTotalPages() * 4);
 	
 	// Initialize the other CPUs. This should not return.
 	Arch::CPU::InitAsBSP();
