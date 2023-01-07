@@ -16,7 +16,7 @@ qemu-system-x86_64.exe -no-reboot -no-shutdown  ^
 -debugcon stdio                                 ^
 -display sdl                                    ^
 -accel tcg                                      ^
--monitor telnet:127.0.0.1:55555,server,nowait
+-monitor telnet:127.0.0.1:56789,server,nowait
 
 :-d cpu_reset                                    ^
 : -s -S                                         -- for debugging with GDB

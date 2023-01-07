@@ -17,7 +17,7 @@
 
 // Address Layout:
 // 0x0000000000000000 - 0x0000EFFFFFFFFFFF: User mappable memory region.
-// 0x0000F00000000000 - 0x0000FFFFFFFFFFFF: User mappable memory region.
+// 0x0000F00000000000 - 0x0000FFFFFFFFFFFF: Kernel heap.
 // 0x0001000000000000 - 0xFFFEFFFFFFFFFFFF: Non-canonical address gap.
 // 0xFFFF000000000000 - 0xFFFFFFFFFFFFFFFF: The kernel and HHDM mapping. This part will have its PML4's verbatim copied
 

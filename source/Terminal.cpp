@@ -36,12 +36,25 @@ void Terminal::Setup()
 	
 	limine_framebuffer* pFB = g_FramebufferRequest.response->framebuffers[0];
 	
+	uint32_t defaultBG = 0x0000007f;
+	uint32_t defaultFG = 0x00ffffff;
+	
 	g_pTermContext = fbterm_init(
 		EternalHeap::Allocate,
 		(uint32_t*)pFB->address,
 		pFB->width, pFB->height, pFB->pitch,
-		NULL,
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 1, 1, 0
+		NULL,       // canvas
+		NULL,       // ANSI colors
+		NULL,       // ANSI bright colors
+		&defaultBG, // Default BG
+		&defaultFG, // Default FG
+		NULL,       // Default BG Bright
+		NULL,       // Default FG Bright
+		NULL,       // Font
+		0, 0,       // font width, height
+		0,          // font spacing
+		1, 1,       // font scale X, Y
+		0
 	);
 }
 

@@ -62,8 +62,6 @@ void PMM::Init()
 		Arch::IdleLoop();
 	}
 	
-	LogMsg("HHDM: %p", Arch::GetHHDMOffset());
-	
 	// For each memory map entry.
 	auto resp = g_MemMapRequest.response;
 	for (uint64_t i = 0; i != resp->entry_count; i++)
