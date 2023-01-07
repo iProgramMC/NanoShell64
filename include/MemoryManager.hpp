@@ -16,10 +16,11 @@
 #define _MEMORY_MANAGER_HPP
 
 // Address Layout:
-// 0x0000000000000000 - 0x0000EFFFFFFFFFFF: User mappable memory region.
-// 0x0000F00000000000 - 0x0000FFFFFFFFFFFF: Kernel heap.
-// 0x0001000000000000 - 0xFFFEFFFFFFFFFFFF: Non-canonical address gap.
-// 0xFFFF000000000000 - 0xFFFFFFFFFFFFFFFF: The kernel and HHDM mapping. This part will have its PML4's verbatim copied
+// 0x0000'0000'0000'0000 - 0x0000'FFFF'FFFF'FFFF: User mappable memory region.
+// 0x0001'0000'0000'0000 - 0xFFFE'FFFF'FFFF'FFFF: Non-canonical address gap.
+// 0xFFFF'8000'0000'0000 - 0xFFFF'EFFF'FFFF'FFFF: The HHDM mapping. This part and the ones below will have their PML4's verbatim copied
+// 0xFFFF'F000'0000'0000 - 0xFFFF'FFFE'FFFF'FFFF: The kernel heap.
+// 0xFFFF'FFFF'0000'0000 - 0xFFFF'FFFF'FFFF'FFFF: The kernel itself.
 
 #include <Nanoshell.hpp>
 

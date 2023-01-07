@@ -6,6 +6,11 @@
 //  ***************************************************************
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
 //  ***************************************************************
+//
+//  Module description:
+//      This file contains the _start function, which launches and
+//   brings the kernel to life.
+//  ***************************************************************
 
 #include <Nanoshell.hpp>
 #include <_limine.h>
@@ -27,23 +32,8 @@ volatile limine_bootloader_info_request g_BootloaderInfoRequest =
 	.response = NULL,
 };
 
-typedef void(*Constructor)();
-typedef void(*Destructor)();
-
-extern Constructor g_init_array_start[], g_init_array_end[];
-extern Destructor  g_fini_array_start[], g_fini_array_end[];
-
-void RunAllConstructors()
-{
-	for (auto func = g_init_array_start; func != g_init_array_end; func++)
-		(*func)();
-}
-
-void RunAllDestructors()
-{
-	for (auto func = g_fini_array_start; func != g_fini_array_end; func++)
-		(*func)();
-}
+void RunAllConstructors();
+void RunAllDestructors();
 
 // The following will be our kernel's entry point.
 extern "C" void _start(void)
@@ -56,7 +46,7 @@ extern "C" void _start(void)
 	
 	Terminal::Setup();
 	
-	LogMsg("NanoShell64 (TM), January 2023 - V0.001");
+	LogMsg("NanoShell64 (TM), January 2023 - V0.002");
 	
 	PMM::Init();
 	

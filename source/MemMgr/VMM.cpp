@@ -76,6 +76,7 @@ PageMapping* PageMapping::Clone(PageMapping* pPM)
 	// Look through the lower canonical half's PML4 entries and clone them recursively.
 	for (int i = 0; i < 256; i++)
 	{
+		/*
 		// If there is no PML4, continue;
 		PML4* pOldPML4 = pPM->GetPML4(i);
 		if (!pOldPML4) continue;
@@ -101,10 +102,11 @@ PageMapping* PageMapping::Clone(PageMapping* pPM)
 		}
 		
 		pNewPM->m_entries[i].m_data = entry.m_data;
+		*/
 	}
 	
 	// Just copy the other 256.
-	for (int i = 0; i < 512; i++)
+	for (int i = 256; i < 512; i++)
 	{
 		PageEntry& oldEnt = pPM->m_entries[i];
 		pNewPM->m_entries[i].m_data = oldEnt.m_data;
