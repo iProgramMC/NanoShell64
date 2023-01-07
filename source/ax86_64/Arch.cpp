@@ -78,6 +78,18 @@ void Arch::EnableInterrupts()
 	ASM("sti":::"memory");
 }
 
+uintptr_t Arch::ReadCR3()
+{
+	uintptr_t cr3 = 0;
+	ASM("movq %%cr3, %0":"=r"(cr3));
+	return cr3;
+}
+
+void Arch::WriteCR3(uintptr_t cr3)
+{
+	ASM("movq %0, %%cr3"::"r"(cr3));
+}
+
 void Arch::WriteMSR(uint32_t msr, uint64_t value)
 {
 	uint32_t edx = uint32_t(value >> 32);

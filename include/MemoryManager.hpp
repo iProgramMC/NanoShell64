@@ -1,5 +1,5 @@
 //  ***************************************************************
-//  APIC.cpp - Creation date: 05/01/2023
+//  MemoryManager.hpp - Creation date: 07/01/2023
 //  -------------------------------------------------------------
 //  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
 //
@@ -15,11 +15,17 @@
 #ifndef _MEMORY_MANAGER_HPP
 #define _MEMORY_MANAGER_HPP
 
-#include <Arch.hpp>
+// Address Layout:
+// 0x0000000000000000 - 0x0000EFFFFFFFFFFF: User mappable memory region.
+// 0x0000F00000000000 - 0x0000FFFFFFFFFFFF: User mappable memory region.
+// 0x0001000000000000 - 0xFFFEFFFFFFFFFFFF: Non-canonical address gap.
+// 0xFFFF000000000000 - 0xFFFFFFFFFFFFFFFF: The kernel and HHDM mapping. This part will have its PML4's verbatim copied
+
+#include <Nanoshell.hpp>
 
 constexpr uint64_t PAGE_SIZE = 4096;
 
-namespace PhysicalMM
+namespace PMM
 {
 	constexpr uintptr_t INVALID_PAGE = 0;
 	
@@ -59,6 +65,87 @@ namespace PhysicalMM
 	
 	// Test out the PMM.
 	void Test();
-};
+}
+
+namespace VMM
+{
+	// Represents a single page entry.
+	union PageEntry
+	{
+		struct
+		{
+			bool m_present      : 1;
+			bool m_readWrite    : 1;
+			bool m_supervisor   : 1;
+			bool m_writeThrough : 1;
+			bool m_cacheDisable : 1;
+			bool m_accessed     : 1;
+			bool m_dirty        : 1;
+			bool m_pat          : 1;
+			bool m_global       : 1;
+			// 3 available bits.
+			bool m_partOfPmm    : 1; // If this bit is set, this is a part of the PMM.
+			bool m_needAllocPage: 1; // If this bit is set, we will want to place a new address into the address field on page fault.
+			bool m_available0   : 1;
+			uint64_t m_address  : 40;
+			int  m_available1   : 7;
+			int  m_protKey      : 4;
+			bool m_execDisable  : 1;
+		};
+		uint64_t m_data;
+	};
+	
+	struct PageTable
+	{
+		PageEntry m_entries[512];
+		
+		// Gets the page entry pointer as a virtual address.
+		PageEntry* GetPageEntry(int index)
+		{
+			return &m_entries[index];
+		}
+	};
+	
+	struct PageDirectory
+	{
+		PageEntry m_entries[512];
+		
+		// Gets the page table pointer as a virtual address.
+		PageTable* GetPageTable(int index);
+	};
+	
+	struct PML3 // PDPT
+	{
+		PageEntry m_entries[512];
+		
+		// Gets the page table pointer as a virtual address.
+		PageDirectory* GetPageDirectory(int index);
+	};
+	
+	struct PML4
+	{
+		PageEntry m_entries[512];
+		
+		// Gets the page table pointer as a virtual address.
+		PML3* GetPML3(int index);
+	};
+	
+	struct PageMapping
+	{
+		PageEntry m_entries[512];
+		
+		// Gets the PML4 pointer as a virtual address.
+		PML4* GetPML4(int index);
+		
+		// Gets the current page mapping from the CR3.
+		static PageMapping* GetFromCR3();
+		
+		// Clones a page mapping.
+		static PageMapping* Clone(PageMapping* pPageMapping);
+		
+		// Switches the executing CPU to use this page mapping.
+		void SwitchTo();
+	};
+}
 
 #endif//_MEMORY_MANAGER_HPP

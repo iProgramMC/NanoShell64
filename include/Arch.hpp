@@ -10,6 +10,7 @@
 #define _ARCH_HPP
 
 #include <Nanoshell.hpp>
+#include <MemoryManager.hpp>
 #include <_limine.h>
 
 namespace Arch
@@ -144,6 +145,9 @@ namespace Arch
 		// The IDT of this CPU.
 		IDT m_idt;
 		
+		// The main page mapping.
+		VMM::PageMapping* m_pPageMap;
+		
 		// Store other fields here such as current task, etc.
 		
 		/**** Private CPU object functions. ****/
@@ -229,6 +233,11 @@ namespace Arch
 	
 	// x86_64 architecture specific functions.
 #ifdef TARGET_X86_64
+	// Gets the contents of CR3.
+	uintptr_t ReadCR3();
+	
+	// Sets the contents of CR3.
+	void WriteCR3(uintptr_t cr3);
 	
 	// Reads a single byte from an I/O port.
 	uint8_t ReadByte(uint16_t port);

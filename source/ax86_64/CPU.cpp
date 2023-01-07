@@ -22,11 +22,16 @@ extern "C" void _term_puts(const char* str);
 
 void Arch::CPU::Init()
 {
+	using namespace VMM;
+	
 	// Write the GS base MSR.
 	WriteMSR(Arch::eMSR::KERNEL_GS_BASE, uint64_t(this));
 	
 	// Re-load the GDT.
 	LoadGDT();
+	
+	// Clone the page mapping and assign it to this CPU.
+	m_pPageMap = PageMapping::Clone(PageMapping::GetFromCR3());
 	
 	// Initialize the APIC on this CPU.
 	APIC::Init();

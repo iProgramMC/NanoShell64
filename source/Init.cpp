@@ -56,14 +56,14 @@ extern "C" void _start(void)
 	
 	LogMsg("NanoShell64 (TM), January 2023 - V0.001");
 	
-	PhysicalMM::Init();
+	PMM::Init();
 	
 #ifdef TARGET_X86_64
 	Arch::APIC::EnsureOn();
 #endif
 	
 	uint32_t processorCount = Arch::CPU::GetCount();
-	LogMsg("%d System Processor%s [%llu Kb Memory] MultiProcessor Kernel", processorCount, processorCount == 1 ? "" : "s", PhysicalMM::GetTotalPages() * 4);
+	LogMsg("%d System Processor%s [%llu Kb Memory] MultiProcessor Kernel", processorCount, processorCount == 1 ? "" : "s", PMM::GetTotalPages() * 4);
 	
 	// Initialize the other CPUs. This should not return.
 	Arch::CPU::InitAsBSP();

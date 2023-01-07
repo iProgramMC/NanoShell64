@@ -14,6 +14,8 @@
 
 #include <Nanoshell.hpp>
 
+#define IS_64_BIT 1
+
 static void UnsignedToString(uint64_t num, char* str, int paddingInfo, char paddingChar)
 {
 	// print the actual digits themselves

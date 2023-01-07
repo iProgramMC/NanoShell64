@@ -1,5 +1,5 @@
 //  ***************************************************************
-//  APIC.cpp - Creation date: 05/01/2023
+//  PMM.cpp - Creation date: 07/01/2023
 //  -------------------------------------------------------------
 //  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
 //
@@ -8,12 +8,12 @@
 //  ***************************************************************
 //  
 //  Module description:
-//      This module implements a manager for the APIC for each CPU.
+//      This module implements a thread safe physical memory
+//  manager.
 //
 //  ***************************************************************
 #include <_limine.h>
 #include <Arch.hpp>
-#include <MemoryManager.hpp>
 #include <Spinlock.hpp>
 #include <EternalHeap.hpp>
 
@@ -24,13 +24,13 @@ volatile limine_memmap_request g_MemMapRequest =
 	.response = NULL,
 };
 
-static PhysicalMM::BitmapPart* s_pFirstBMPart, *s_pLastBMPart;
-static Spinlock                s_PMMSpinlock;
-static uint64_t                s_totalAvailablePages; // The total amount of pages available to the system.
+static PMM::BitmapPart* s_pFirstBMPart, *s_pLastBMPart;
+static Spinlock         s_PMMSpinlock;
+static uint64_t         s_totalAvailablePages; // The total amount of pages available to the system.
 
 // Add a new BitmapPart entry. This may only be called during initialization.
 // The reason I did it like this is because I really don't want to publicize this function.
-namespace PhysicalMM
+namespace PMM
 {
 
 void AddBitmapPart(BitmapPart* pPart)
@@ -47,12 +47,12 @@ void AddBitmapPart(BitmapPart* pPart)
 
 };
 
-uint64_t PhysicalMM::GetTotalPages()
+uint64_t PMM::GetTotalPages()
 {
 	return s_totalAvailablePages;
 }
 
-void PhysicalMM::Init()
+void PMM::Init()
 {
 	// Check if we have the memmap response.
 	if (!g_MemMapRequest.response)
@@ -61,6 +61,8 @@ void PhysicalMM::Init()
 		LogMsg("No physical memory map response was given by limine.  Halting");
 		Arch::IdleLoop();
 	}
+	
+	LogMsg("HHDM: %p", Arch::GetHHDMOffset());
 	
 	// For each memory map entry.
 	auto resp = g_MemMapRequest.response;
@@ -78,7 +80,10 @@ void PhysicalMM::Init()
 		// Check how many 64-bit ints we need to allocate for this entry.
 		size_t nBits = (entry->length + PAGE_SIZE - 1) / PAGE_SIZE;
 		
-		void* pMem = EternalHeap::Allocate((nBits + 7) / 8 * sizeof(uint64_t) + sizeof(BitmapPart));
+		// TODO OPTIMIZE: Maybe don't allocate everything just yet?
+		size_t sz = (nBits + 7) / 8 * sizeof(uint64_t) + sizeof(BitmapPart);
+		void* pMem = EternalHeap::Allocate(sz);
+		memset(pMem, 0, sz);
 		
 		BitmapPart* pPart = new(pMem) BitmapPart(entry->base, nBits);
 		
@@ -88,7 +93,7 @@ void PhysicalMM::Init()
 	}
 }
 
-uintptr_t PhysicalMM::AllocatePage()
+uintptr_t PMM::AllocatePage()
 {
 	LockGuard lg (s_PMMSpinlock);
 	
@@ -124,7 +129,7 @@ uintptr_t PhysicalMM::AllocatePage()
 	return INVALID_PAGE;
 }
 
-void PhysicalMM::FreePage(uintptr_t page)
+void PMM::FreePage(uintptr_t page)
 {
 	LockGuard lg (s_PMMSpinlock);
 	
@@ -154,14 +159,14 @@ void PhysicalMM::FreePage(uintptr_t page)
 	bmp->m_bits[i] &= ~(1 << j);
 }
 
-void PhysicalMM::Test()
+void PMM::Test()
 {
 	// The two printed addresses should ideally be the same.
-	uintptr_t addr = PhysicalMM::AllocatePage();
+	uintptr_t addr = PMM::AllocatePage();
 	LogMsg("Addr: %p", addr);
-	PhysicalMM::FreePage(addr);
+	PMM::FreePage(addr);
 	
-	addr = PhysicalMM::AllocatePage();
+	addr = PMM::AllocatePage();
 	LogMsg("Addr: %p", addr);
-	PhysicalMM::FreePage(addr);
+	PMM::FreePage(addr);
 }
