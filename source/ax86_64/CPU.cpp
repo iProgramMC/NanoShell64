@@ -14,15 +14,36 @@
 #include <Arch.hpp>
 #include <Atomic.hpp>
 #include <Terminal.hpp>
+#include <EternalHeap.hpp>
 
 extern Atomic<int> g_CPUsInitialized; // Arch.cpp
 
-// TODO: a sprintf() like function, and other string functions.
-extern "C" void _term_puts(const char* str);
+extern "C" void CPU_OnPageFault_Asm();
+extern "C" void CPU_OnPageFault(Registers* pRegs)
+{
+	Arch::CPU::GetCurrent()->OnPageFault(pRegs);
+}
+
+void Arch::CPU::OnPageFault(Registers* pRegs)
+{
+	// We're in the page fault handler.
+	
+	// Check if the accessed page is valid or not
+	
+	LogMsg("Page fault!!  CR2: %p  RIP: %p", pRegs->cr2, pRegs->rip);
+	
+	Arch::IdleLoop();
+}
 
 void Arch::CPU::Init()
 {
 	using namespace VMM;
+	
+	// Allocate a small stack
+	m_pIsrStack = EternalHeap::Allocate(C_INTERRUPT_STACK_SIZE);
+	
+	// Set it in the TSS
+	m_gdt.m_tss.m_rsp[0] = m_gdt.m_tss.m_rsp[1] = m_gdt.m_tss.m_rsp[2] = uint64_t(m_pIsrStack);
 	
 	// Write the GS base MSR.
 	WriteMSR(Arch::eMSR::KERNEL_GS_BASE, uint64_t(this));
@@ -30,9 +51,16 @@ void Arch::CPU::Init()
 	// Re-load the GDT.
 	LoadGDT();
 	
+	// Setup the IDT....
+	SetInterruptGate(0x0E, uintptr_t(CPU_OnPageFault_Asm));
+	
+	// Load the IDT.
+	LoadIDT();
+	
 	// Clone the page mapping and assign it to this CPU. This will
 	// ditch the lower half mapping that the bootloader has provided us.
 	m_pPageMap = PageMapping::GetFromCR3()->Clone(false);
+	m_pPageMap->SwitchTo();
 	
 	// We shall at least try to map a new page in. Use the new fangled tech.
 	uintptr_t addr = 0x100000;

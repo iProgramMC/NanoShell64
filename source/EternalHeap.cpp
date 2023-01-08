@@ -7,6 +7,7 @@
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
 //  ***************************************************************
 
+#include <Nanoshell.hpp>
 #include <EternalHeap.hpp>
 #include <Spinlock.hpp>
 
@@ -27,6 +28,7 @@ void *EternalHeap::Allocate(size_t sz)
 	if (gEternalHeap + sz > gEternalHeapEnd)
 	{
 		// OOPS! We failed to allocate this block. Return NULL.
+		LogMsg("Eternal heap failed to allocate. Oops");
 		return NULL;
 	}
 	

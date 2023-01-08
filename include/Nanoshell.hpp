@@ -26,13 +26,18 @@ inline void  operator delete[](void *, void *) throw() { };
 
 #define ASM __asm__ __volatile__
 
+#ifdef TARGET_X86_64
 struct Registers
 {
-	uint64_t rsp;
+	uint16_t ds, es, fs, gs;
+	uint64_t cr2;
 	uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
 	uint64_t rbp, rdi, rsi;
 	uint64_t rdx, rcx, rbx, rax;
-};
+	uint64_t cs, rip, rflags, ss, rsp; // pushed by the ISR and popped by iretq.
+}
+PACKED;
+#endif
 
 extern "C"
 {

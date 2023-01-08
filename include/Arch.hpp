@@ -22,9 +22,9 @@ namespace Arch
 	struct TSS
 	{
 		uint32_t m_reserved;
-		uint64_t m_rsp[3];
+		uint64_t m_rsp[3];    // RSP 0-2
 		uint64_t m_reserved1;
-		uint64_t m_ist[7];
+		uint64_t m_ist[7];    // IST 1-7
 		uint64_t m_reserved2;
 		uint16_t m_reserved3;
 		uint16_t m_iopb;
@@ -38,15 +38,15 @@ namespace Arch
 		// The segment numbers.
 		enum
 		{
-			DESC_NULL,
-			DESC_16BIT_CODE,
-			DESC_16BIT_DATA,
-			DESC_32BIT_CODE,
-			DESC_32BIT_DATA,
-			DESC_64BIT_RING0_CODE,
-			DESC_64BIT_RING0_DATA,
-			DESC_64BIT_RING3_CODE,
-			DESC_64BIT_RING3_DATA,
+			DESC_NULL             = 0x00,
+			DESC_16BIT_CODE       = 0x08,
+			DESC_16BIT_DATA       = 0x10,
+			DESC_32BIT_CODE       = 0x18,
+			DESC_32BIT_DATA       = 0x20,
+			DESC_64BIT_RING0_CODE = 0x28,
+			DESC_64BIT_RING0_DATA = 0x30,
+			DESC_64BIT_RING3_CODE = 0x38,
+			DESC_64BIT_RING3_DATA = 0x40,
 		};
 		
 		uint64_t m_BasicEntries[9];
@@ -128,6 +128,8 @@ namespace Arch
 	
 	class CPU
 	{
+		static constexpr size_t C_INTERRUPT_STACK_SIZE = 8192;
+		
 		/**** CPU specific variables ****/
 	private:
 		// The index of this processor.
@@ -148,6 +150,9 @@ namespace Arch
 		// The main page mapping.
 		VMM::PageMapping* m_pPageMap;
 		
+		// The interrupt handler stack.
+		void* m_pIsrStack;
+		
 		// Store other fields here such as current task, etc.
 		
 		/**** Private CPU object functions. ****/
@@ -166,6 +171,8 @@ namespace Arch
 #endif
 		/**** Operations that should be run within this CPU's context, but are otherwise public ****/
 	public:
+		// The function called when we're inside of a page fault.
+		void OnPageFault(Registers* pRegs);
 		
 		// Setup the CPU.
 		void Init();
