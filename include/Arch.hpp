@@ -269,6 +269,9 @@ namespace Arch
 	// Get the HHDM offset (higher half direct map).
 	uintptr_t GetHHDMOffset();
 	
+	// Invalidate a part of the TLB cache.
+	void Invalidate(uintptr_t addr);
+	
 	// Writes to a model specific register.
 	void WriteMSR(uint32_t msr, uint64_t value);
 	

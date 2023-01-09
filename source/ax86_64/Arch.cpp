@@ -35,6 +35,11 @@ uintptr_t Arch::GetHHDMOffset()
 	return g_HHDMRequest.response->offset;
 }
 
+void Arch::Invalidate(uintptr_t ptr)
+{
+	ASM("invlpg (%0)"::"r"(ptr):"memory");
+}
+
 void Arch::WritePhys(uintptr_t ptr, uint32_t thing)
 {
 	*((uint32_t*)(GetHHDMOffset() + ptr)) = thing;
