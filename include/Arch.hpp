@@ -56,6 +56,12 @@ namespace Arch
 	
 	struct IDT
 	{
+		enum
+		{
+			INT_PAGE_FAULT = 0x0E,
+			INT_IPI        = 0xF0,
+		};
+		
 		struct Entry
 		{
 			// Byte 0, 1

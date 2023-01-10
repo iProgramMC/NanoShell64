@@ -13,12 +13,51 @@
 //  ***************************************************************
 #include <Arch.hpp>
 #include <Terminal.hpp>
+#include <Spinlock.hpp>
 
 #define C_SPURIOUS_INTERRUPT_VECTOR (0xFF)
-#define C_APIC_REG_EOI      (0xB0)
-#define C_APIC_REG_SPURIOUS (0xF0)
 
 #define IA32_APIC_BASE_MSR (0x1B)
+
+enum
+{
+	APIC_REG_ID            = 0x20,
+	APIC_REG_VER           = 0x30,
+	APIC_REG_TASK_PRIORITY = 0x80,
+	APIC_REG_ARB_PRIORITY  = 0x90,
+	APIC_REG_PROC_PRIORITY = 0xA0,
+	APIC_REG_EOI           = 0xB0,
+	APIC_REG_REMOTE_READ   = 0xC0,
+	APIC_REG_LOGICAL_DEST  = 0xD0,
+	APIC_REG_DEST_FORMAT   = 0xE0,
+	APIC_REG_SPURIOUS      = 0xF0,
+	APIC_REG_ISR_START     = 0x100, // 0x100 - 0x170
+	APIC_REG_TRIG_MODE     = 0x180, // 0x180 - 0x1F0
+	APIC_REG_IRQ           = 0x200, // 0x200 - 0x270
+	APIC_REG_ERROR_STAT    = 0x280,
+	APIC_REG_LVT_CMCI      = 0x2F0,
+	APIC_REG_ICR0          = 0x300,
+	APIC_REG_ICR1          = 0x310,
+	APIC_REG_LVT_TIMER     = 0x320,
+	APIC_REG_LVT_THERMAL   = 0x330,
+	APIC_REG_LVT_PERFMON   = 0x340,
+	APIC_REG_LVT_LINT0     = 0x350,
+	APIC_REG_LVT_LINT1     = 0x360,
+	APIC_REG_LVT_ERROR     = 0x370,
+	APIC_REG_TMR_INIT_CNT  = 0x380,
+	APIC_REG_TMR_CURR_CNT  = 0x390,
+	APIC_REG_TMR_DIV_CFG   = 0x3E0,
+};
+
+enum
+{
+	APIC_ICR0_DELIVERY_STATUS = (1 << 12),
+};
+
+enum
+{
+	APIC_ICR1_BROADCAST = (3 << 18),
+};
 
 // Write a register.
 void Arch::APIC::WriteReg(uint32_t reg, uint32_t value)
@@ -66,8 +105,8 @@ extern "C" void Arch_APIC_OnInterrupt()
 
 void Arch::APIC::OnInterrupt()
 {
-	WriteReg(C_APIC_REG_EOI, 0);
-	LogMsg("APIC interrupt!");
+	WriteReg(APIC_REG_EOI, 0);
+	SLogMsg("APIC interrupt!");
 }
 
 void Arch::APIC::Init()
@@ -98,7 +137,7 @@ void Arch::APIC::Init()
 	CPU::GetCurrent()->SetInterruptGate(C_SPURIOUS_INTERRUPT_VECTOR, uintptr_t(Arch_APIC_OnInterrupt_Asm));
 	
 	// Enable the spurious vector interrupt.
-	WriteReg(C_APIC_REG_SPURIOUS, C_SPURIOUS_INTERRUPT_VECTOR | 0x100);
+	WriteReg(APIC_REG_SPURIOUS, C_SPURIOUS_INTERRUPT_VECTOR | 0x100);
 }
 
 void Arch::CPU::SendTestIPI()
@@ -106,7 +145,18 @@ void Arch::CPU::SendTestIPI()
 	// The destination is 'this'. The sender (us) is 'pSenderCPU'.
 	CPU * pSenderCPU = GetCurrent();
 	
-	// Wait for any pending IPIs to finish.
+	LogMsg("Waiting for pending IPIs");
 	
+	// Wait for any pending IPIs to finish on this CPU.
+	while (APIC::ReadReg(APIC_REG_ICR0) & APIC_ICR0_DELIVERY_STATUS) Spinlock::SpinHint();
 	
+	LogMsg("Sending the actual IPI. Lapic ID: %d", m_pSMPInfo->lapic_id);
+	
+	// Write the destination CPU's LAPIC ID.
+	APIC::WriteReg(APIC_REG_ICR1, m_pSMPInfo->lapic_id << 24);
+	
+	// Write the interrupt vector.
+	APIC::WriteReg(APIC_REG_ICR0, IDT::INT_IPI | APIC_ICR1_BROADCAST);
+	
+	LogMsg("Sent!");
 }

@@ -19,6 +19,7 @@
 extern Atomic<int> g_CPUsInitialized; // Arch.cpp
 
 extern "C" void CPU_OnPageFault_Asm();
+extern "C" void Arch_APIC_OnInterrupt_Asm();
 extern "C" void CPU_OnPageFault(Registers* pRegs)
 {
 	Arch::CPU::GetCurrent()->OnPageFault(pRegs);
@@ -52,7 +53,8 @@ void Arch::CPU::Init()
 	LoadGDT();
 	
 	// Setup the IDT....
-	SetInterruptGate(0x0E, uintptr_t(CPU_OnPageFault_Asm));
+	SetInterruptGate(IDT::INT_PAGE_FAULT, uintptr_t(CPU_OnPageFault_Asm));
+	SetInterruptGate(IDT::INT_IPI,        uintptr_t(Arch_APIC_OnInterrupt_Asm));
 	
 	// Load the IDT.
 	LoadIDT();
