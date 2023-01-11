@@ -88,6 +88,9 @@ void Arch::CPU::Init()
 	LogMsg("Hello from processor #%d", m_processorID);
 	
 	g_CPUsInitialized.FetchAdd(1);
+	
+	// Enable interrupts.
+	Arch::EnableInterrupts();
 }
 
 void Arch::CPU::Go()
@@ -99,7 +102,7 @@ void Arch::CPU::Go()
 		
 		// Since all other processors are running, try sending an IPI to processor 1.
 		CPU* p1 = GetCPU(1);
-		p1->SendTestIPI();
+		p1->SendIPI();
 	}
 	
 	Arch::IdleLoop();
@@ -114,4 +117,9 @@ Arch::CPU* Arch::CPU::GetCurrent()
 void Arch::CPU::SetInterruptGate(uint8_t intNum, uintptr_t fnHandler, uint8_t ist, uint8_t dpl)
 {
 	m_idt.SetEntry(intNum, IDT::Entry(fnHandler, ist, dpl));
+}
+
+void Arch::CPU::OnIPI()
+{
+	LogMsg("Got IPI!");
 }

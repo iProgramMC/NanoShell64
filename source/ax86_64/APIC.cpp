@@ -56,7 +56,10 @@ enum
 
 enum
 {
-	APIC_ICR1_BROADCAST = (3 << 18),
+	APIC_ICR1_SINGLE           = (0 << 18),
+	APIC_ICR1_SELF             = (1 << 18),
+	APIC_ICR1_BROADCAST        = (2 << 18),
+	APIC_ICR1_BROADCAST_OTHERS = (3 << 18),
 };
 
 // Write a register.
@@ -100,13 +103,16 @@ void Arch::APIC::EnsureOn()
 extern "C" void Arch_APIC_OnInterrupt_Asm();
 extern "C" void Arch_APIC_OnInterrupt()
 {
-	Arch::APIC::OnInterrupt();
-}
-
-void Arch::APIC::OnInterrupt()
-{
-	WriteReg(APIC_REG_EOI, 0);
-	SLogMsg("APIC interrupt!");
+	using namespace Arch;
+	
+	// Get the current CPU.
+	CPU* pCpu = CPU::GetCurrent();
+	
+	// Tell it that we've IPI'd.
+	pCpu->OnIPI();
+	
+	// Make sure an EOI is sent.
+	APIC::WriteReg(APIC_REG_EOI, 0);
 }
 
 void Arch::APIC::Init()
@@ -140,23 +146,17 @@ void Arch::APIC::Init()
 	WriteReg(APIC_REG_SPURIOUS, C_SPURIOUS_INTERRUPT_VECTOR | 0x100);
 }
 
-void Arch::CPU::SendTestIPI()
+void Arch::CPU::SendIPI()
 {
 	// The destination is 'this'. The sender (us) is 'pSenderCPU'.
 	CPU * pSenderCPU = GetCurrent();
 	
-	LogMsg("Waiting for pending IPIs");
-	
 	// Wait for any pending IPIs to finish on this CPU.
 	while (APIC::ReadReg(APIC_REG_ICR0) & APIC_ICR0_DELIVERY_STATUS) Spinlock::SpinHint();
-	
-	LogMsg("Sending the actual IPI. Lapic ID: %d", m_pSMPInfo->lapic_id);
 	
 	// Write the destination CPU's LAPIC ID.
 	APIC::WriteReg(APIC_REG_ICR1, m_pSMPInfo->lapic_id << 24);
 	
 	// Write the interrupt vector.
 	APIC::WriteReg(APIC_REG_ICR0, IDT::INT_IPI | APIC_ICR1_BROADCAST);
-	
-	LogMsg("Sent!");
 }

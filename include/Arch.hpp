@@ -125,9 +125,6 @@ namespace Arch
 		
 		// Get the LAPIC's base address. This is offset by the HHDM.
 		uintptr_t GetLapicBase();
-		
-		// On Interrupt.
-		void OnInterrupt();
 	};
 	
 #endif
@@ -177,6 +174,9 @@ namespace Arch
 #endif
 		/**** Operations that should be run within this CPU's context, but are otherwise public ****/
 	public:
+		// The function called when an IPI was received.
+		void OnIPI();
+		
 		// The function called when we're inside of a page fault.
 		void OnPageFault(Registers* pRegs);
 		
@@ -205,7 +205,7 @@ namespace Arch
 		}
 		
 		// Send this CPU an IPI.
-		void SendTestIPI();
+		void SendIPI();
 		
 		/**** CPU agnostic operations ****/
 	public:
