@@ -18,20 +18,23 @@ extern "C" {
 
 void* memcpy(void* dst, const void* src, size_t n)
 {
-	ASM("rep movsb"::"c"(n),"D"(dst),"S"(src));
-	return dst;
+	void* dst2 = dst;
+	ASM("rep movsb":"+c"(n),"+D"(dst),"+S"(src)::"memory");
+	return dst2;
 }
 
 void* memquadcpy(uint64_t* dst, const uint64_t* src, size_t n)
 {
-	ASM("rep movsq"::"c"(n),"D"(dst),"S"(src));
-	return dst;
+	void* dst2 = dst;
+	ASM("rep movsq":"+c"(n),"+D"(dst),"+S"(src)::"memory");
+	return dst2;
 }
 
 void* memset(void* dst, int c, size_t n)
 {
-	ASM("rep stosb"::"c"(n),"D"(dst),"a"(c));
-	return dst;
+	void* dst2 = dst;
+	ASM("rep stosb":"+c"(n),"+D"(dst):"a"(c):"memory");
+	return dst2;
 }
 
 size_t strlen(const char * s)
