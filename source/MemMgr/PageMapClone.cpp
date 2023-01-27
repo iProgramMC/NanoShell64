@@ -23,10 +23,7 @@ PageTable* PageTable::Clone()
 	uintptr_t pmPage = PMM::AllocatePage();
 	
 	if (pmPage == PMM::INVALID_PAGE)
-	{
-		SLogMsg("Could not clone page table! (source/MemMgr/VMM.cpp:%d)", __LINE__);
-		return NULL;
-	}
+		KernelPanic("Could not clone page table! (source/MemMgr/VMM.cpp:%d)", __LINE__);
 	
 	// Allocate the PageTable itself.
 	PageTable* pNewPT = (PageTable*)(Arch::GetHHDMOffset() + pmPage);
@@ -43,13 +40,11 @@ PageTable* PageTable::Clone()
 		// if this is part of the PMM...
 		if (oldEnt.m_partOfPmm)
 		{
-			// clone the page
+			// clone the page. TODO: Copy on write
 			uintptr_t newPage = PMM::AllocatePage();
 			if (pmPage == PMM::INVALID_PAGE)
-			{
-				SLogMsg("Could not clone page! (source/MemMgr/VMM.cpp:%d)", __LINE__);
-				continue;
-			}
+				KernelPanic("Could not clone page! (source/MemMgr/VMM.cpp:%d)", __LINE__);
+			
 			newEnt.m_address = newPage >> 12;
 		}
 		
@@ -64,10 +59,7 @@ PageDirectory* PageDirectory::Clone()
 	uintptr_t pmPage = PMM::AllocatePage();
 	
 	if (pmPage == PMM::INVALID_PAGE)
-	{
-		SLogMsg("Could not clone page directory! (source/MemMgr/VMM.cpp:%d)", __LINE__);
-		return NULL;
-	}
+		KernelPanic("Could not clone page directory! (source/MemMgr/VMM.cpp:%d)", __LINE__);
 	
 	// Allocate the PageDirectory itself.
 	PageDirectory* pNewPD = (PageDirectory*)(Arch::GetHHDMOffset() + pmPage);
@@ -100,10 +92,7 @@ PML3* PML3::Clone()
 	uintptr_t pmPage = PMM::AllocatePage();
 	
 	if (pmPage == PMM::INVALID_PAGE)
-	{
-		SLogMsg("Could not clone PML3! (source/MemMgr/VMM.cpp:%d)", __LINE__);
-		return NULL;
-	}
+		KernelPanic("Could not clone PML3! (source/MemMgr/VMM.cpp:%d)", __LINE__);
 	
 	// Allocate the PML3 itself.
 	PML3* pNewPM = (PML3*)(Arch::GetHHDMOffset() + pmPage);
@@ -136,17 +125,14 @@ PageMapping* PageMapping::Clone(bool keepLowerHalf)
 	uintptr_t pmPage = PMM::AllocatePage();
 	
 	if (pmPage == PMM::INVALID_PAGE)
-	{
-		SLogMsg("Could not clone page mapping! (souce/MemMgr/VMM.cpp:%d)", __LINE__);
-		return NULL;
-	}
+		KernelPanic("Could not clone page mapping! (source/MemMgr/VMM.cpp:%d)", __LINE__);
 	
 	// Allocate the pagemapping itself.
 	PageMapping* pNewPM = (PageMapping*)(Arch::GetHHDMOffset() + pmPage);
 	memset(pNewPM, 0, sizeof *pNewPM);
 	
 	// Look through the lower canonical half's PML3 entries and clone them recursively.
-	for (int i = 0; keepLowerHalf && i < 256; i++)
+	for (int i = P_USER_START; keepLowerHalf && i < P_USER_END; i++)
 	{
 		// If there is no PML3, continue;
 		PML3* pOldPML3 = GetPML3(i);
@@ -166,10 +152,31 @@ PageMapping* PageMapping::Clone(bool keepLowerHalf)
 	}
 	
 	// Just copy the other 256.
-	for (int i = 256; i < 512; i++)
+	for (int i = P_KERN_START; i < P_KERN_END; i++)
 	{
 		PageEntry& oldEnt = m_entries[i];
 		pNewPM->m_entries[i].m_data = oldEnt.m_data;
+	}
+	
+	using namespace Arch;
+	
+	CPU* pCpu = CPU::GetCurrent();
+	if (!pCpu->WerePml4EntriesInitted())
+	{
+		// Ideally this is called before we get to any tasking code
+		pCpu->Pml4EntriesInitted();
+		
+		// Initialize the PML4 entries of the user heap.
+		for (int i = P_KHEAP_START; i < P_KHEAP_END; i++)
+		{
+			uintptr_t addr = PMM::AllocatePage();
+			
+			if (addr == PMM::INVALID_PAGE)
+				KernelPanic("Could not allocate kernel heap page.");
+			
+			PageEntry ent(addr, true, false, true, true, false);
+			pNewPM->m_entries[i] = ent;
+		}
 	}
 	
 	return pNewPM;

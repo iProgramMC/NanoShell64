@@ -102,7 +102,11 @@ void Arch::CPU::Go()
 		
 		// Since all other processors are running, try sending an IPI to processor 1.
 		CPU* p1 = GetCPU(1);
-		p1->SendIPI();
+		
+		if (p1)
+			p1->SendIPI(eIpiType::HELLO);
+	
+		KernelPanic("Hello there %d", 1337);
 	}
 	
 	Arch::IdleLoop();
@@ -119,7 +123,28 @@ void Arch::CPU::SetInterruptGate(uint8_t intNum, uintptr_t fnHandler, uint8_t is
 	m_idt.SetEntry(intNum, IDT::Entry(fnHandler, ist, dpl));
 }
 
+Atomic<int> g_panickedCpus { 0 };
+
 void Arch::CPU::OnIPI()
 {
-	LogMsg("Got IPI!");
+	eIpiType type = m_ipiType;
+	
+	switch (type)
+	{
+		case eIpiType::NONE: break;
+		case eIpiType::HELLO:
+		{
+			LogMsg("Got IPI! (I am processor %u)", m_processorID);
+			break;
+		}
+		case eIpiType::PANIC:
+		{
+			SLogMsg("Processor %u got panic IPI from someone.", m_processorID);
+			
+			g_panickedCpus.FetchAdd(1);
+			
+			Arch::DisableInterrupts();
+			Arch::IdleLoop();
+		}
+	}
 }

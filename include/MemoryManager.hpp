@@ -77,6 +77,20 @@ namespace PMM
 
 namespace VMM
 {
+	// The PML4 indices of the memory regions.
+	enum ePml4Limit
+	{
+		P_USER_START  = 0x000,
+		P_USER_END    = 0x100,
+		P_KERN_START  = 0x100,
+		P_HHDM_START  = 0x100,
+		P_HHDM_END    = 0x1D0,
+		P_KHEAP_START = 0x1D0,
+		P_KHEAP_END   = 0x1FF,
+		P_KERNEL_PML4 = 0x1FF,
+		P_KERN_END    = 0x200,
+	};
+	
 	// Represents a single page entry.
 	union PageEntry
 	{

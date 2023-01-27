@@ -113,6 +113,9 @@ extern "C" void Arch_APIC_OnInterrupt()
 	
 	// Make sure an EOI is sent.
 	APIC::WriteReg(APIC_REG_EOI, 0);
+	
+	// since a CPU::SendIPI() call was needed to reach this point, unlock the IPI spinlock.
+	pCpu->UnlockIpiSpinlock();
 }
 
 void Arch::APIC::Init()
@@ -146,7 +149,7 @@ void Arch::APIC::Init()
 	WriteReg(APIC_REG_SPURIOUS, C_SPURIOUS_INTERRUPT_VECTOR | 0x100);
 }
 
-void Arch::CPU::SendIPI()
+void Arch::CPU::SendIPI(eIpiType type)
 {
 	// The destination is 'this'. The sender (us) is 'pSenderCPU'.
 	CPU * pSenderCPU = GetCurrent();
@@ -154,9 +157,16 @@ void Arch::CPU::SendIPI()
 	// Wait for any pending IPIs to finish on this CPU.
 	while (APIC::ReadReg(APIC_REG_ICR0) & APIC_ICR0_DELIVERY_STATUS) Spinlock::SpinHint();
 	
+	m_ipiSpinlock.Lock();
+	
+	m_ipiType = type;
+	m_ipiSenderID = pSenderCPU->m_processorID;
+	
 	// Write the destination CPU's LAPIC ID.
 	APIC::WriteReg(APIC_REG_ICR1, m_pSMPInfo->lapic_id << 24);
 	
 	// Write the interrupt vector.
-	APIC::WriteReg(APIC_REG_ICR0, IDT::INT_IPI | APIC_ICR1_BROADCAST);
+	APIC::WriteReg(APIC_REG_ICR0, IDT::INT_IPI | APIC_ICR1_SINGLE);
+	
+	// The CPU in question will unlock the IPI spinlock.
 }

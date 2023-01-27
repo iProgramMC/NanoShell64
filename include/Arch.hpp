@@ -11,6 +11,7 @@
 
 #include <Nanoshell.hpp>
 #include <MemoryManager.hpp>
+#include <Spinlock.hpp>
 #include <_limine.h>
 
 namespace Arch
@@ -131,6 +132,14 @@ namespace Arch
 	
 	class CPU
 	{
+	public:
+		enum class eIpiType
+		{
+			NONE,
+			HELLO,
+			PANIC,
+		};
+		
 		static constexpr size_t C_INTERRUPT_STACK_SIZE = 8192;
 		
 		/**** CPU specific variables ****/
@@ -156,6 +165,18 @@ namespace Arch
 		// The interrupt handler stack.
 		void* m_pIsrStack;
 		
+		// If we have initialized the kernel map PML4 entries.
+		bool m_bInitializedPml4Entries = 0;
+		
+		// The current IPI type.
+		eIpiType m_ipiType = eIpiType::NONE;
+		
+		// The sender of this IPI.
+		uint32_t m_ipiSenderID = 0;
+		
+		// The IPI spinlock.
+		Spinlock m_ipiSpinlock;
+		
 		// Store other fields here such as current task, etc.
 		
 		/**** Private CPU object functions. ****/
@@ -174,6 +195,28 @@ namespace Arch
 #endif
 		/**** Operations that should be run within this CPU's context, but are otherwise public ****/
 	public:
+		uint32_t ID() const
+		{
+			return m_processorID;
+		}
+		
+		// Check if the kernel heap's PML4 entries were initialized.
+		bool WerePml4EntriesInitted() const
+		{
+			return m_bInitializedPml4Entries;
+		}
+		
+		// Set the above flag to true.
+		void Pml4EntriesInitted()
+		{
+			m_bInitializedPml4Entries = true;
+		}
+		
+		void UnlockIpiSpinlock()
+		{
+			m_ipiSpinlock.Unlock();
+		}
+		
 		// The function called when an IPI was received.
 		void OnIPI();
 		
@@ -205,7 +248,7 @@ namespace Arch
 		}
 		
 		// Send this CPU an IPI.
-		void SendIPI();
+		void SendIPI(eIpiType type);
 		
 		/**** CPU agnostic operations ****/
 	public:

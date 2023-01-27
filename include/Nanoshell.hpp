@@ -56,6 +56,8 @@ extern "C"
 
 	void SLogMsg(const char* fmt, ...);
 	void SLogMsgNoCR(const char* fmt, ...);
+	
+	void KernelPanic(const char* fmt, ...);
 };
 
 #endif//_NANOSHELL_HPP
