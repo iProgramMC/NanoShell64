@@ -24,16 +24,77 @@ volatile limine_memmap_request g_MemMapRequest =
 	.response = NULL,
 };
 
-static PMM::BitmapPart* s_pFirstBMPart, *s_pLastBMPart;
+static PMM::MemoryArea* s_pFirstBMPart, *s_pLastBMPart;
 static Spinlock         s_PMMSpinlock;
 static uint64_t         s_totalAvailablePages; // The total amount of pages available to the system.
 
-// Add a new BitmapPart entry. This may only be called during initialization.
-// The reason I did it like this is because I really don't want to publicize this function.
+// The reason I put these in a "namespace PMM" block is because I don't want to publicize these functions.
 namespace PMM
 {
 
-void AddBitmapPart(BitmapPart* pPart)
+uintptr_t MemoryArea::RemoveFirst()
+{
+	PageFreeListNode * pFirst = m_pFirst;
+	
+	// remove it
+	if (pFirst->pNext)
+		pFirst->pNext->pPrev = NULL;
+	m_pFirst = pFirst->pNext;
+	if (m_pLast == pFirst)
+		m_pLast =  NULL;
+	
+	m_freePages--;
+	
+	return (uintptr_t)pFirst - Arch::GetHHDMOffset();
+}
+
+void MemoryArea::PushBack(uintptr_t paddr)
+{
+	PageFreeListNode* pLast = m_pLast, *pThis = (PageFreeListNode*)(Arch::GetHHDMOffset() + paddr);
+	
+	pThis->pNext = NULL;
+	pThis->pPrev = pLast;
+	if (pLast)
+		pLast->pNext = pThis;
+	m_pLast = pThis;
+	m_freePages++;
+}
+
+// Initialize a MemoryArea free list.
+void InitializeMemoryArea(MemoryArea* pPart)
+{
+	uintptr_t ho = Arch::GetHHDMOffset();
+	uintptr_t physAddr = pPart->m_startAddr + ho;
+	
+	PageFreeListNode* first = (PageFreeListNode*)physAddr;
+	
+	for (size_t sz = 0; sz != pPart->m_length; sz++, physAddr += PAGE_SIZE)
+	{
+		((PageFreeListNode*)physAddr)->pPrev = (PageFreeListNode*)(physAddr - PAGE_SIZE);
+		((PageFreeListNode*)physAddr)->pNext = (PageFreeListNode*)(physAddr + PAGE_SIZE);
+	}
+	
+	PageFreeListNode* last = (PageFreeListNode*)(physAddr - PAGE_SIZE);
+	last ->pNext = NULL;
+	first->pPrev = NULL;
+	
+	pPart->m_pFirst = first;
+	pPart->m_pLast  = last;
+	
+	// ensure continuity
+	/*
+	PageFreeListNode* pNode = (PageFreeListNode*)(ho + pPart->m_startAddr);
+	
+	while (pNode)
+	{
+		SLogMsg("Node: %p", pNode);
+		pNode = pNode->pNext;
+	}
+	*/
+}
+
+// Add a new MemoryArea entry. This may only be called during initialization.
+void AddMemoryArea(MemoryArea* pPart)
 {
 	if (s_pFirstBMPart == NULL)
 	{
@@ -43,6 +104,8 @@ void AddBitmapPart(BitmapPart* pPart)
 	
 	s_pLastBMPart->m_pLink = pPart;
 	s_pLastBMPart          = pPart;
+	
+	InitializeMemoryArea(pPart);
 }
 
 };
@@ -75,19 +138,18 @@ void PMM::Init()
 			continue;
 		}
 		
-		// Check how many 64-bit ints we need to allocate for this entry.
-		size_t nBits = (entry->length + PAGE_SIZE - 1) / PAGE_SIZE;
+		// Check how many pages we have.
+		size_t nPages = (entry->length + PAGE_SIZE - 1) / PAGE_SIZE;
 		
-		// TODO OPTIMIZE: Maybe don't allocate everything just yet?
-		size_t sz = (nBits + 7) / 8 * sizeof(uint64_t) + sizeof(BitmapPart);
-		void* pMem = EternalHeap::Allocate(sz);
-		memset(pMem, 0, sz);
+		// TODO: Assert that entry->base is page aligned
+		void* pMem = EternalHeap::Allocate(sizeof(MemoryArea));
+		memset(pMem, 0, sizeof(MemoryArea));
 		
-		BitmapPart* pPart = new(pMem) BitmapPart(entry->base, nBits);
+		MemoryArea* pPart = new(pMem) MemoryArea(entry->base, nPages);
 		
 		s_totalAvailablePages += pPart->m_length;
 		
-		AddBitmapPart(pPart);
+		AddMemoryArea(pPart);
 	}
 }
 
@@ -95,33 +157,19 @@ uintptr_t PMM::AllocatePage()
 {
 	LockGuard lg (s_PMMSpinlock);
 	
-	// browse through the whole BitmapPart chain
-	BitmapPart* bmp = s_pFirstBMPart;
+	// browse through the whole MemoryArea chain
+	MemoryArea* bmp = s_pFirstBMPart;
 	while (bmp)
 	{
-		// Look through all the bits.
-		size_t nBitsArrLen = (bmp->m_length + 7) / 8;
-		
-		for (uint64_t i = 0; i < nBitsArrLen; i++)
+		// if there are no free list nodes
+		if (bmp->m_pFirst == NULL || bmp->m_pLast == NULL || bmp->m_freePages == 0)
 		{
-			const uint64_t bit = bmp->m_bits[i];
-			
-			// If there are no bits free here, skip
-			if (bit == ~0ULL) continue;
-			
-			// Which bit was zero?
-			for (uint64_t j = 0; j < 64; j++)
-			{
-				if (~bit & (1 << j))
-				{
-					bmp->m_bits[i] |= (1 << j);
-					// Return this page.
-					return bmp->m_startAddr + PAGE_SIZE * (i * 64 + j);
-				}
-			}
+			bmp = bmp->m_pLink;
+			continue;
 		}
 		
-		bmp = bmp->m_pLink;
+		// there is one. Remove it and return.
+		return bmp->RemoveFirst();
 	}
 	
 	return INVALID_PAGE;
@@ -132,7 +180,7 @@ void PMM::FreePage(uintptr_t page)
 	LockGuard lg (s_PMMSpinlock);
 	
 	// Find the bitmap part where this page resides;
-	BitmapPart* bmp = s_pFirstBMPart;
+	MemoryArea* bmp = s_pFirstBMPart;
 	while (bmp)
 	{
 		if (bmp->m_startAddr <= page) break;
@@ -146,15 +194,8 @@ void PMM::FreePage(uintptr_t page)
 		return;
 	}
 	
-	// just clear the bit
-	page -= bmp->m_startAddr;
-	page /= PAGE_SIZE;
-	
-	uint64_t i, j;
-	i = page / 64;
-	j = page % 64;
-	
-	bmp->m_bits[i] &= ~(1 << j);
+	// Append it to the last freelist index.
+	bmp->PushBack(page);
 }
 
 void PMM::Test()

@@ -29,3 +29,15 @@ void RunAllDestructors()
 	for (auto func = g_fini_array_start; func != g_fini_array_end; func++)
 		(*func)();
 }
+
+// cxa calls
+extern "C"
+{
+
+void __cxa_pure_virtual()
+{
+    // Do nothing or print an error message.
+	LogMsg("Pure virtual function!");
+}
+
+};

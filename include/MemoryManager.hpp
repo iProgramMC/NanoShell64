@@ -30,10 +30,15 @@ namespace PMM
 {
 	constexpr uintptr_t INVALID_PAGE = 0;
 	
-	struct BitmapPart
+	struct PageFreeListNode
 	{
-		// The link to the next BitmapPart entry.
-		BitmapPart* m_pLink;
+		PageFreeListNode *pPrev, *pNext;
+	};
+	
+	struct MemoryArea
+	{
+		// The link to the next MemoryArea entry.
+		MemoryArea* m_pLink;
 		// The start of the physical memory this bitmap represents.
 		uintptr_t m_startAddr;
 		// The length (in pages) of this PMM bitmap.
@@ -41,12 +46,14 @@ namespace PMM
 		// The amount of pages free. This should always be kept in sync.
 		size_t    m_freePages;
 		
-		// The bits themselves. This is a dynamic array.
-		uint64_t  m_bits[];
+		PageFreeListNode *m_pFirst, *m_pLast;
 		
-		BitmapPart(uintptr_t start, size_t len) : m_pLink(nullptr), m_startAddr(start), m_length(len), m_freePages(len)
+		MemoryArea(uintptr_t start, size_t len) : m_pLink(nullptr), m_startAddr(start), m_length(len), m_freePages(len)
 		{
 		}
+		
+		uintptr_t RemoveFirst();
+		void PushBack(uintptr_t paddr);
 	};
 	
 	// Get the total amount of pages available to the system. Never changes after init.
