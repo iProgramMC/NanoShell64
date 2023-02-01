@@ -70,6 +70,12 @@ extern CPU_OnPageFault
 	pop rcx
 	pop rbx
 	pop rax
+	add rsp, 8 ; we're supposed to add 8 to rsp anyways.
+%endmacro
+
+%macro PUSH_ALL_NO_ERC 0
+	push 0           ; push a fake error code
+	PUSH_ALL
 %endmacro
 
 ; Swaps GS if needed, pushes DS.
@@ -106,7 +112,7 @@ CPU_OnPageFault_Asm:
 
 ; Implements the assembly stub which calls into the C function, which then calls into the C++ function.
 Arch_APIC_OnInterrupt_Asm:
-	PUSH_ALL
+	PUSH_ALL_NO_ERC
 	SWAP_GS_IF_NEEDED
 	
 	mov  rdi, rsp

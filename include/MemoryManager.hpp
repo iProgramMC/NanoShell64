@@ -107,7 +107,9 @@ namespace VMM
 			// 3 available bits.
 			bool m_partOfPmm     : 1; // bit 9:  If this bit is set, this is a part of the PMM.
 			bool m_needAllocPage : 1; // bit 10: If this bit is set, we will want to place a new address into the address field on page fault.
-			bool m_pad           : 1; // bit 11: If this bit is set, upon a page fault, pad this with (protKey << 4 | protKey) bytes.
+			                          //         When we do that, we should fill it with a byte like (protKey << 4 | protKey). No particular
+									  //         reason we are using protKey specifically.
+			bool m_available0    : 1; // bit 11
 			uint64_t m_address   : 40;// bits 12-51 (MAXPHYADDR)
 			int  m_available1    : 7; // bits 52-58 (ignored)
 			int  m_protKey       : 4; // bits 59-62 (protection key, ignores unless CR4.PKE or CR4.PKS is set and this is a page tree leaf)
@@ -182,6 +184,9 @@ namespace VMM
 		
 		// Clones a page mapping.
 		PageMapping* Clone(bool keepLowerHalf = true);
+		
+		// Gets a page entry from the table. Returns NULL if it's not available.
+		PageEntry* GetPageEntry(uintptr_t addr);
 		
 		// Switches the executing CPU to use this page mapping.
 		void SwitchTo();

@@ -34,7 +34,8 @@ struct Registers
 	uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
 	uint64_t rbp, rdi, rsi;
 	uint64_t rdx, rcx, rbx, rax;
-	uint64_t cs, rip, rflags, ss, rsp; // pushed by the ISR and popped by iretq.
+	uint64_t error_code;
+	uint64_t rip, cs, rflags, rsp, ss; // pushed by the ISR and popped by iretq.
 }
 PACKED;
 #endif

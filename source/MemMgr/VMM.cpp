@@ -131,13 +131,37 @@ bool PageMapping::MapPage(uintptr_t addr, const PageEntry & pe)
 
 bool PageMapping::MapPage(uintptr_t addr, bool rw, bool super, bool xd)
 {
+	/*
 	uintptr_t pm = PMM::AllocatePage();
 	if (pm == PMM::INVALID_PAGE) return false;
 	
 	// Create a page entry. TODO don't actually allocate from the PMM but instead fault the page in.
 	PageEntry pe(pm, rw, super, xd, true, false);
+	*/
+	
+	// Create a page entry.
+	PageEntry pe(0, rw, super, xd, true, true, false);
 	
 	return MapPage(addr, pe);
+}
+
+PageEntry* PageMapping::GetPageEntry(uintptr_t addr)
+{
+	// Remove a page mapping.
+	constexpr uintptr_t mask = 0x1FF;
+	uintptr_t index_PML4 = (addr >> 39) & mask;
+	uintptr_t index_PML3 = (addr >> 30) & mask;
+	uintptr_t index_PML2 = (addr >> 21) & mask;
+	uintptr_t index_PML1 = (addr >> 12) & mask;
+	
+	PML3          *pPml3;
+	PageDirectory *pPageDir; 
+	PageTable     *pPageTable; 
+	
+	if (!(pPml3      = GetPML3                   (index_PML4))) return NULL;
+	if (!(pPageDir   = pPml3   ->GetPageDirectory(index_PML3))) return NULL;
+	if (!(pPageTable = pPageDir->GetPageTable    (index_PML2))) return NULL;
+	return pPageTable->GetPageEntry(index_PML1);
 }
 
 /**** Switch To ****/

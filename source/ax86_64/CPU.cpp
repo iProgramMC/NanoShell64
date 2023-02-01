@@ -25,17 +25,6 @@ extern "C" void CPU_OnPageFault(Registers* pRegs)
 	Arch::CPU::GetCurrent()->OnPageFault(pRegs);
 }
 
-void Arch::CPU::OnPageFault(Registers* pRegs)
-{
-	// We're in the page fault handler.
-	
-	// Check if the accessed page is valid or not
-	
-	LogMsg("Page fault!!  CR2: %p  RIP: %p", pRegs->cr2, pRegs->rip);
-	
-	Arch::IdleLoop();
-}
-
 void Arch::CPU::Init()
 {
 	using namespace VMM;
@@ -59,15 +48,21 @@ void Arch::CPU::Init()
 	// Load the IDT.
 	LoadIDT();
 	
+	LogMsg("About to page clone...");
+	
 	// Clone the page mapping and assign it to this CPU. This will
 	// ditch the lower half mapping that the bootloader has provided us.
 	m_pPageMap = PageMapping::GetFromCR3()->Clone(false);
 	m_pPageMap->SwitchTo();
 	
+	LogMsg("Cloned, gonna map...");
+	
 	// We shall at least try to map a new page in. Use the new fangled tech.
 	uintptr_t addr = 0x100000;
 	
 	bool result = m_pPageMap->MapPage(addr);
+	
+	LogMsg("Mapped?");
 	
 	if (!result)
 	{
@@ -77,7 +72,7 @@ void Arch::CPU::Init()
 	{
 		// try out our new fangled mapping!
 		*((uint64_t*)addr) = 0xFEDCBA9876543210 + m_processorID;
-		
+		ASM("":::"memory");
 		LogMsg("Got back: %p", *((uint64_t*)addr));
 	}
 	
@@ -106,7 +101,7 @@ void Arch::CPU::Go()
 		if (p1)
 			p1->SendIPI(eIpiType::HELLO);
 	
-		KernelPanic("Hello there %d", 1337);
+		//KernelPanic("Hello there %d", 1337);
 	}
 	
 	Arch::IdleLoop();
