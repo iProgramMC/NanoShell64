@@ -85,8 +85,7 @@ namespace VMM
 		P_KERN_START  = 0x100,
 		P_HHDM_START  = 0x100,
 		P_HHDM_END    = 0x1D0,
-		P_KHEAP_START = 0x1D0,
-		P_KHEAP_END   = 0x1FF,
+		P_KHEAP       = 0x1D0, // one page is enough I would think.
 		P_KERNEL_PML4 = 0x1FF,
 		P_KERN_END    = 0x200,
 	};
@@ -96,23 +95,23 @@ namespace VMM
 	{
 		struct
 		{
-			bool m_present      : 1;
-			bool m_readWrite    : 1;
-			bool m_supervisor   : 1;
-			bool m_writeThrough : 1;
-			bool m_cacheDisable : 1;
-			bool m_accessed     : 1;
-			bool m_dirty        : 1;
-			bool m_pat          : 1;
-			bool m_global       : 1;
+			bool m_present       : 1; // bit 0
+			bool m_readWrite     : 1; // bit 1
+			bool m_supervisor    : 1; // bit 2
+			bool m_writeThrough  : 1; // bit 3
+			bool m_cacheDisable  : 1; // bit 4
+			bool m_accessed      : 1; // bit 5
+			bool m_dirty         : 1; // bit 6
+			bool m_pat           : 1; // bit 7
+			bool m_global        : 1; // bit 8
 			// 3 available bits.
-			bool m_partOfPmm    : 1; // If this bit is set, this is a part of the PMM.
-			bool m_needAllocPage: 1; // If this bit is set, we will want to place a new address into the address field on page fault.
-			bool m_available0   : 1;
-			uint64_t m_address  : 40;
-			int  m_available1   : 7;
-			int  m_protKey      : 4;
-			bool m_execDisable  : 1;
+			bool m_partOfPmm     : 1; // bit 9:  If this bit is set, this is a part of the PMM.
+			bool m_needAllocPage : 1; // bit 10: If this bit is set, we will want to place a new address into the address field on page fault.
+			bool m_pad           : 1; // bit 11: If this bit is set, upon a page fault, pad this with (protKey << 4 | protKey) bytes.
+			uint64_t m_address   : 40;// bits 12-51 (MAXPHYADDR)
+			int  m_available1    : 7; // bits 52-58 (ignored)
+			int  m_protKey       : 4; // bits 59-62 (protection key, ignores unless CR4.PKE or CR4.PKS is set and this is a page tree leaf)
+			bool m_execDisable   : 1; // bit 63: Disable execution from this page.
 		};
 		uint64_t m_data;
 		

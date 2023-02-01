@@ -165,9 +165,6 @@ namespace Arch
 		// The interrupt handler stack.
 		void* m_pIsrStack;
 		
-		// If we have initialized the kernel map PML4 entries.
-		bool m_bInitializedPml4Entries = 0;
-		
 		// The current IPI type.
 		eIpiType m_ipiType = eIpiType::NONE;
 		
@@ -198,18 +195,6 @@ namespace Arch
 		uint32_t ID() const
 		{
 			return m_processorID;
-		}
-		
-		// Check if the kernel heap's PML4 entries were initialized.
-		bool WerePml4EntriesInitted() const
-		{
-			return m_bInitializedPml4Entries;
-		}
-		
-		// Set the above flag to true.
-		void Pml4EntriesInitted()
-		{
-			m_bInitializedPml4Entries = true;
 		}
 		
 		void UnlockIpiSpinlock()

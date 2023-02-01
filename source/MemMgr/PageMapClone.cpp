@@ -161,23 +161,8 @@ PageMapping* PageMapping::Clone(bool keepLowerHalf)
 	using namespace Arch;
 	
 	CPU* pCpu = CPU::GetCurrent();
-	if (!pCpu->WerePml4EntriesInitted())
-	{
-		// Ideally this is called before we get to any tasking code
-		pCpu->Pml4EntriesInitted();
-		
-		// Initialize the PML4 entries of the user heap.
-		for (int i = P_KHEAP_START; i < P_KHEAP_END; i++)
-		{
-			uintptr_t addr = PMM::AllocatePage();
-			
-			if (addr == PMM::INVALID_PAGE)
-				KernelPanic("Could not allocate kernel heap page.");
-			
-			PageEntry ent(addr, true, false, true, true, false);
-			pNewPM->m_entries[i] = ent;
-		}
-	}
+	
+	
 	
 	return pNewPM;
 }
