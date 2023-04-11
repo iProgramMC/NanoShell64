@@ -55,8 +55,6 @@ void* KernelHeap::Allocate(size_t sz)
 {
 	// align our size to 16 bytes.
 	sz = (sz + 15) & ~15;
-	int i = 0;
-	LogMsg("Allocate %d!", ++i);
 	
 	LockGuard lg(s_KernelHeapLock);
 	

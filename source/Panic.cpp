@@ -22,18 +22,21 @@ extern Atomic<int> g_panickedCpus;
 extern Spinlock g_E9Spinlock;
 extern Spinlock g_TermSpinlock;
 
-void KernelPanicLogMsg(const char* fmt, va_list lst)
-{
-	char chr[8192];
-	vsnprintf(chr, sizeof chr, fmt, lst);
-	LogMsg("\nMessage: %s\n", chr);
-}
-
 extern "C" void KernelPanic(const char* fmt, ...)
 {
 	using namespace Arch;
+	CPU* pThisCpu = CPU::GetCurrent();
 	
-	LogMsg("\nMessage: %s\n", fmt);
+	char panic_formatted[8192];
+	
+	va_list lst;
+	va_start(lst, fmt);
+	vsnprintf(panic_formatted, sizeof panic_formatted, fmt, lst);
+	
+	// log the panic to the console, in case the code to force panic the other CPUs fails to send the IPIs for some reason
+	SLogMsg("CPU %d - PANIC: %s (RA:%p)", pThisCpu->ID(), panic_formatted, __builtin_return_address(0));
+	
+	// if the panic lock is already locked
 	if (!g_PanicLock.TryLock())
 	{
 		// well, what a coincidence! We panicked here too. Simply wait forever at this pointer
@@ -42,13 +45,12 @@ extern "C" void KernelPanic(const char* fmt, ...)
 			Halt();
 	}
 	
+	// really, we should ::Store(1), however we can only panic once during the lifetime of the kernel, so this and Store(1) are equivalent
+	g_panickedCpus.FetchAdd(1);
+	
 	// send all other processors an IPI
 	limine_smp_response* pResp = CPU::GetSMPResponse();
 	
-	CPU* pThisCpu = CPU::GetCurrent();
-	
-	g_panickedCpus.FetchAdd(1);
-	/*
 	for (uint32_t pid = 0; pid < pResp->cpu_count; pid++)
 	{
 		CPU* pCpu = CPU::GetCPU(pid);
@@ -61,16 +63,14 @@ extern "C" void KernelPanic(const char* fmt, ...)
 	{
 		Spinlock::SpinHint();
 	}
-	*/
+	
 	// now that all CPUs are halted, forcefully unlock the LogMsg mutex, just in case we crashed within LogMsg functions
 	g_E9Spinlock.Unlock();
 	g_TermSpinlock.Unlock();
 	
-	va_list lst;
-	va_start(lst, fmt);
 	
 	LogMsg("KERNEL PANIC! (CPU %u)", pThisCpu->ID());
-	KernelPanicLogMsg(fmt, lst);
+	LogMsg("\nMessage: %s\n", panic_formatted);
 	LogMsg("Note: Last return address: %p", __builtin_return_address(0));
 	// TODO: A stack frame unwinder. NanoShell32 can do this, why not 64?
 	
