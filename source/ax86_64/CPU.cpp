@@ -108,10 +108,13 @@ void Arch::CPU::Init()
 	
 	// Try to allocate and test some memory.
 	LogMsg("Allocating from the kernel heap....");
-	uint8_t * p1 = (uint8_t*)VMM::KernelHeap::Allocate(4286);
-	uint8_t * p2 = (uint8_t*)VMM::KernelHeap::Allocate(5768);
+	uint8_t * p1 = new(nopanic) uint8_t[4286];
+	uint8_t * p2 = new(nopanic) uint8_t[5768];
 	
 	LogMsg("p1 = %p, p2 = %p", p1, p2);
+	
+	delete[] p1;
+	delete[] p2;
 	
 	// Initialize the APIC on this CPU.
 	APIC::Init();

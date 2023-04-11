@@ -24,6 +24,13 @@ inline void *operator new[](size_t, void *p)   throw() { return p; }
 inline void  operator delete  (void *, void *) throw() { };
 inline void  operator delete[](void *, void *) throw() { };
 
+class nopanic_t {};
+
+constexpr nopanic_t nopanic;
+
+void* operator new(size_t, const nopanic_t&);
+void* operator new[](size_t, const nopanic_t&);
+
 #define ASM __asm__ __volatile__
 
 #ifdef TARGET_X86_64

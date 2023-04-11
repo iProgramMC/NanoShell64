@@ -11,6 +11,7 @@
 //    This file contains the global constructor executor.
 //  ***************************************************************
 #include <Nanoshell.hpp>
+#include <MemoryManager.hpp>
 
 typedef void(*Constructor)();
 typedef void(*Destructor)();
@@ -28,6 +29,61 @@ void RunAllDestructors()
 {
 	for (auto func = g_fini_array_start; func != g_fini_array_end; func++)
 		(*func)();
+}
+
+static void* OperatorNew(size_t size)
+{
+	void* pMem = VMM::KernelHeap::Allocate(size);
+	
+	if (!pMem)
+		KernelPanic("ERROR: cannot new[](%ll), kernel heap gave us NULL.");
+	
+	return pMem;
+}
+
+static void OperatorFree(void* ptr)
+{
+	VMM::KernelHeap::Free(ptr);
+}
+
+void* operator new(size_t size)
+{
+	return OperatorNew(size);
+}
+
+void* operator new[](size_t size)
+{
+	return OperatorNew(size);
+}
+
+void* operator new(size_t size, const nopanic_t&)
+{
+	return VMM::KernelHeap::Allocate(size);
+}
+
+void* operator new[](size_t size, const nopanic_t&)
+{
+	return VMM::KernelHeap::Allocate(size);
+}
+
+void operator delete(void* ptr)
+{
+	OperatorFree(ptr);
+}
+
+void operator delete(void* ptr, UNUSED size_t size)
+{
+	OperatorFree(ptr);
+}
+
+void operator delete[](void* ptr)
+{
+	OperatorFree(ptr);
+}
+
+void operator delete[](void* ptr, UNUSED size_t size)
+{
+	OperatorFree(ptr);
 }
 
 // cxa calls

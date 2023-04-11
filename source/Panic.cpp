@@ -68,7 +68,6 @@ extern "C" void KernelPanic(const char* fmt, ...)
 	g_E9Spinlock.Unlock();
 	g_TermSpinlock.Unlock();
 	
-	
 	LogMsg("KERNEL PANIC! (CPU %u)", pThisCpu->ID());
 	LogMsg("\nMessage: %s\n", panic_formatted);
 	LogMsg("Note: Last return address: %p", __builtin_return_address(0));
