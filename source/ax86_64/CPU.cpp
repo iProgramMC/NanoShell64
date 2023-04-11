@@ -25,9 +25,42 @@ extern "C" void CPU_OnPageFault(Registers* pRegs)
 	Arch::CPU::GetCurrent()->OnPageFault(pRegs);
 }
 
+void Arch::CPU::SetupGDTAndIDT()
+{
+	// Re-load the GDT.
+	LoadGDT();
+	
+	// Setup the IDT....
+	SetInterruptGate(IDT::INT_PAGE_FAULT, uintptr_t(CPU_OnPageFault_Asm));
+	SetInterruptGate(IDT::INT_IPI,        uintptr_t(Arch_APIC_OnInterrupt_Asm));
+	
+	// Load the IDT.
+	LoadIDT();
+}
+
+static Atomic<bool> g_bIsBSPInitted(false);
+
+void Arch::CPU::OnBSPInitialized()
+{
+	g_bIsBSPInitted.Store(true);
+}
+
+void Arch::CPU::WaitForBSP()
+{
+	while (!g_bIsBSPInitted.Load())
+		Spinlock::SpinHint();
+}
+
 void Arch::CPU::Init()
 {
+	bool bIsBSP = GetSMPResponse()->bsp_lapic_id == m_pSMPInfo->lapic_id;
+	
 	using namespace VMM;
+	
+	if (!bIsBSP)
+	{
+		WaitForBSP();
+	}
 	
 	// Allocate a small stack
 	m_pIsrStack = EternalHeap::Allocate(C_INTERRUPT_STACK_SIZE);
@@ -38,17 +71,14 @@ void Arch::CPU::Init()
 	// Write the GS base MSR.
 	WriteMSR(Arch::eMSR::KERNEL_GS_BASE, uint64_t(this));
 	
-	// Re-load the GDT.
-	LoadGDT();
+	SetupGDTAndIDT();
 	
-	// Setup the IDT....
-	SetInterruptGate(IDT::INT_PAGE_FAULT, uintptr_t(CPU_OnPageFault_Asm));
-	SetInterruptGate(IDT::INT_IPI,        uintptr_t(Arch_APIC_OnInterrupt_Asm));
+	if (bIsBSP)
+	{
+		KernelHeap::Init();
+	}
 	
-	// Load the IDT.
-	LoadIDT();
-	
-	LogMsg("About to page clone...");
+	LogMsg("About to page clone (BSP=%d)...", bIsBSP);
 	
 	// Clone the page mapping and assign it to this CPU. This will
 	// ditch the lower half mapping that the bootloader has provided us.
@@ -76,6 +106,13 @@ void Arch::CPU::Init()
 		LogMsg("Got back: %p", *((uint64_t*)addr));
 	}
 	
+	// Try to allocate and test some memory.
+	LogMsg("Allocating from the kernel heap....");
+	uint8_t * p1 = (uint8_t*)VMM::KernelHeap::Allocate(4286);
+	uint8_t * p2 = (uint8_t*)VMM::KernelHeap::Allocate(5768);
+	
+	LogMsg("p1 = %p, p2 = %p", p1, p2);
+	
 	// Initialize the APIC on this CPU.
 	APIC::Init();
 	
@@ -86,6 +123,9 @@ void Arch::CPU::Init()
 	
 	// Enable interrupts.
 	Arch::EnableInterrupts();
+	
+	if (bIsBSP)
+		OnBSPInitialized();
 }
 
 void Arch::CPU::Go()

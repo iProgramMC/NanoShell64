@@ -189,6 +189,15 @@ namespace Arch
 		// Load the IDT.
 		// Note: Any ulterior changes should be done through an IPI to the CPU.
 		void LoadIDT();
+		
+		// Sets up the GDT and IDT.
+		void SetupGDTAndIDT();
+		
+		// Waits for the BSP to initialize.
+		void WaitForBSP();
+		
+		// Marks the BSP as initialized.
+		void OnBSPInitialized();
 #endif
 		/**** Operations that should be run within this CPU's context, but are otherwise public ****/
 	public:

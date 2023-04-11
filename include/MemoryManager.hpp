@@ -77,6 +77,9 @@ namespace PMM
 
 namespace VMM
 {
+	constexpr uintptr_t C_KERNEL_HEAP_START = 0xFFFFA00000000000;
+	constexpr uintptr_t C_KERNEL_HEAP_SIZE  = 0x800000; // 8 MB
+	
 	// The PML4 indices of the memory regions.
 	enum ePml4Limit
 	{
@@ -199,6 +202,39 @@ namespace VMM
 		
 		// Removes a page mapping, and any now empty levels that it resided in.
 		void UnmapPage(uintptr_t addr, bool removeUpperLevels = true);
+	};
+	
+	class KernelHeap
+	{
+	public:
+		struct FreeListNode
+		{
+			static constexpr uint64_t FLN_MAGIC = 0x67249a80d35b1cef;
+			static constexpr uint64_t FLA_MAGIC = 0x4fa850d3672e91cb;
+			
+			uint64_t      m_magic;
+			FreeListNode* m_next;
+			FreeListNode* m_prev;
+			size_t        m_size;
+			
+			void* GetArea()
+			{
+				return (void*)((uint8_t*)this + sizeof(FreeListNode));
+			}
+			
+			FreeListNode* GetPtrDirectlyAfter()
+			{
+				return (FreeListNode*)((uint8_t*)this + sizeof(FreeListNode) + m_size);
+			}
+		};
+		
+	public:
+		// Initializes the kernel heap.
+		static void Init();
+		
+		static void* Allocate(size_t);
+		
+		static void Free(void*);
 	};
 }
 

@@ -33,6 +33,7 @@ extern "C" void KernelPanic(const char* fmt, ...)
 {
 	using namespace Arch;
 	
+	LogMsg("\nMessage: %s\n", fmt);
 	if (!g_PanicLock.TryLock())
 	{
 		// well, what a coincidence! We panicked here too. Simply wait forever at this pointer
@@ -47,7 +48,7 @@ extern "C" void KernelPanic(const char* fmt, ...)
 	CPU* pThisCpu = CPU::GetCurrent();
 	
 	g_panickedCpus.FetchAdd(1);
-	
+	/*
 	for (uint32_t pid = 0; pid < pResp->cpu_count; pid++)
 	{
 		CPU* pCpu = CPU::GetCPU(pid);
@@ -60,7 +61,7 @@ extern "C" void KernelPanic(const char* fmt, ...)
 	{
 		Spinlock::SpinHint();
 	}
-	
+	*/
 	// now that all CPUs are halted, forcefully unlock the LogMsg mutex, just in case we crashed within LogMsg functions
 	g_E9Spinlock.Unlock();
 	g_TermSpinlock.Unlock();
