@@ -49,19 +49,21 @@ static void plot_char(struct term_context *_ctx, struct fbterm_char *c, size_t x
 
     x = ctx->offset_x + x * ctx->glyph_width;
     y = ctx->offset_y + y * ctx->glyph_height;
+	
+	uint32_t default_bg = ctx->default_bg;
 
     bool *glyph = &ctx->font_bool[c->c * ctx->font_height * ctx->font_width];
     // naming: fx,fy for font coordinates, gx,gy for glyph coordinates
     for (size_t gy = 0; gy < ctx->glyph_height; gy++) {
         uint8_t fy = gy / ctx->font_scale_y;
         volatile uint32_t *fb_line = ctx->framebuffer + x + (y + gy) * (ctx->pitch / 4);
-        uint32_t *canvas_line = ctx->canvas + x + (y + gy) * ctx->width;
+        //uint32_t *canvas_line = ctx->canvas + x + (y + gy) * ctx->width;
         for (size_t fx = 0; fx < ctx->font_width; fx++) {
             bool draw = glyph[fy * ctx->font_width + fx];
             for (size_t i = 0; i < ctx->font_scale_x; i++) {
                 size_t gx = ctx->font_scale_x * fx + i;
-                uint32_t bg = c->bg == 0xffffffff ? canvas_line[gx] : c->bg;
-                uint32_t fg = c->fg == 0xffffffff ? canvas_line[gx] : c->fg;
+                uint32_t bg = c->bg == 0xffffffff ? default_bg : c->bg;
+                uint32_t fg = c->fg == 0xffffffff ? default_bg : c->fg;
                 fb_line[gx] = draw ? fg : bg;
             }
         }
@@ -74,6 +76,8 @@ static void plot_char_fast(struct term_context *_ctx, struct fbterm_char *old, s
     if (x >= _ctx->cols || y >= _ctx->rows) {
         return;
     }
+	
+	uint32_t default_bg = ctx->default_bg;
 
     x = ctx->offset_x + x * ctx->glyph_width;
     y = ctx->offset_y + y * ctx->glyph_height;
@@ -83,7 +87,7 @@ static void plot_char_fast(struct term_context *_ctx, struct fbterm_char *old, s
     for (size_t gy = 0; gy < ctx->glyph_height; gy++) {
         uint8_t fy = gy / ctx->font_scale_y;
         volatile uint32_t *fb_line = ctx->framebuffer + x + (y + gy) * (ctx->pitch / 4);
-        uint32_t *canvas_line = ctx->canvas + x + (y + gy) * ctx->width;
+        //uint32_t *canvas_line = ctx->canvas + x + (y + gy) * ctx->width;
         for (size_t fx = 0; fx < ctx->font_width; fx++) {
             bool old_draw = old_glyph[fy * ctx->font_width + fx];
             bool new_draw = new_glyph[fy * ctx->font_width + fx];
@@ -91,8 +95,8 @@ static void plot_char_fast(struct term_context *_ctx, struct fbterm_char *old, s
                 continue;
             for (size_t i = 0; i < ctx->font_scale_x; i++) {
                 size_t gx = ctx->font_scale_x * fx + i;
-                uint32_t bg = c->bg == 0xffffffff ? canvas_line[gx] : c->bg;
-                uint32_t fg = c->fg == 0xffffffff ? canvas_line[gx] : c->fg;
+                uint32_t bg = c->bg == 0xffffffff ? default_bg : c->bg;
+                uint32_t fg = c->fg == 0xffffffff ? default_bg : c->fg;
                 fb_line[gx] = new_draw ? fg : bg;
             }
         }
@@ -394,7 +398,7 @@ static void fbterm_full_refresh(struct term_context *_ctx) {
 
     for (size_t y = 0; y < ctx->height; y++) {
         for (size_t x = 0; x < ctx->width; x++) {
-            ctx->framebuffer[y * (ctx->pitch / sizeof(uint32_t)) + x] = ctx->canvas[y * ctx->width + x];
+            ctx->framebuffer[y * (ctx->pitch / sizeof(uint32_t)) + x] = ctx->default_bg; //ctx->canvas[y * ctx->width + x];
         }
     }
 
@@ -418,7 +422,7 @@ static void fbterm_deinit(struct term_context *_ctx, void (*_free)(void *, size_
     _free(ctx->grid, ctx->grid_size);
     _free(ctx->queue, ctx->queue_size);
     _free(ctx->map, ctx->map_size);
-    _free(ctx->canvas, ctx->canvas_size);
+    //_free(ctx->canvas, ctx->canvas_size);
     _free(ctx, sizeof(struct fbterm_context));
 }
 
@@ -579,15 +583,15 @@ struct term_context *fbterm_init(
     ctx->map = _malloc(ctx->map_size);
     memset(ctx->map, 0, ctx->map_size);
 
-    ctx->canvas_size = ctx->width * ctx->height * sizeof(uint32_t);
-    ctx->canvas = _malloc(ctx->canvas_size);
-    if (canvas != NULL) {
+    //ctx->canvas_size = ctx->width * ctx->height * sizeof(uint32_t);
+    //ctx->canvas = _malloc(ctx->canvas_size);
+    /*if (canvas != NULL) {
         memcpy(ctx->canvas, canvas, ctx->canvas_size);
     } else {
         for (size_t i = 0; i < ctx->width * ctx->height; i++) {
             ctx->canvas[i] = ctx->default_bg;
         }
-    }
+    }*/
 
     _ctx->raw_putchar = fbterm_raw_putchar;
     _ctx->clear = fbterm_clear;
