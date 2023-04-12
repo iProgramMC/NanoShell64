@@ -78,13 +78,12 @@ void Arch::CPU::Init()
 		KernelHeap::Init();
 	}
 	
-	LogMsg("About to page clone (BSP=%d)...", bIsBSP);
-	
 	// Clone the page mapping and assign it to this CPU. This will
 	// ditch the lower half mapping that the bootloader has provided us.
 	m_pPageMap = PageMapping::GetFromCR3()->Clone(false);
 	m_pPageMap->SwitchTo();
 	
+	/*
 	LogMsg("Cloned, gonna map...");
 	
 	// We shall at least try to map a new page in. Use the new fangled tech.
@@ -105,7 +104,9 @@ void Arch::CPU::Init()
 		ASM("":::"memory");
 		LogMsg("Got back: %p", *((uint64_t*)addr));
 	}
+	*/
 	
+	/*
 	// Try to allocate and test some memory.
 	LogMsg("Allocating from the kernel heap....");
 	uint8_t * p1 = new(nopanic) uint8_t[4286];
@@ -115,6 +116,7 @@ void Arch::CPU::Init()
 	
 	delete[] p1;
 	delete[] p2;
+	*/
 	
 	// Initialize the APIC on this CPU.
 	APIC::Init();
@@ -126,6 +128,9 @@ void Arch::CPU::Init()
 	
 	// Enable interrupts.
 	Arch::EnableInterrupts();
+	
+	// Initialize our scheduler.
+	m_Scheduler.Init();
 	
 	if (bIsBSP)
 		OnBSPInitialized();

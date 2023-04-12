@@ -11,6 +11,7 @@
 
 #include <Nanoshell.hpp>
 #include <MemoryManager.hpp>
+#include <Scheduler.hpp>
 #include <Spinlock.hpp>
 #include <_limine.h>
 
@@ -173,6 +174,9 @@ namespace Arch
 		
 		// The IPI spinlock.
 		Spinlock m_ipiSpinlock;
+		
+		// The scheduler object.
+		Scheduler m_Scheduler;
 		
 		// Store other fields here such as current task, etc.
 		
