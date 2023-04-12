@@ -76,7 +76,7 @@ void* KernelHeap::Allocate(size_t sz)
 			// make sure that our kernel heap ain't corrupted or anything
 			if (pNode->m_magic != FreeListNode::FLA_MAGIC)
 			{
-				SLogMsg("ERROR: kernel heap corruption detected at %p. Magic: %p", pNode, pNode->m_magic);
+				SLogMsg("ERROR: kernel heap corruption detected at %p. Magic: %p. RA: %p", pNode, pNode->m_magic, __builtin_return_address(0));
 			}
 			#endif
 			
@@ -134,7 +134,7 @@ void KernelHeap::Free(void* pArea)
 	if (pNode->m_magic != FreeListNode::FLA_MAGIC)
 	{
 		// uh oh! Well, at least we were able to catch this, so just return.
-		SLogMsg("ERROR: attempt to free region %p from kernel heap that wasn't actually allocated (its magic number is %p, a free nodes' is %p)", pArea, pNode->m_magic, FreeListNode::FLN_MAGIC);
+		SLogMsg("ERROR: attempt to free region %p from kernel heap that wasn't actually allocated (its magic number is %p, a free nodes' is %p, RA: %p)", pArea, pNode->m_magic, FreeListNode::FLN_MAGIC, __builtin_return_address(0));
 		return;
 	}
 	

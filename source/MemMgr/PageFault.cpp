@@ -16,7 +16,7 @@
 
 void Arch::CPU::OnPageFault(Registers* pRegs)
 {
-	SLogMsg("Page fault! CR2: %p  RIP: %p  ErrorCode: %p", pRegs->cr2, pRegs->rip, pRegs->error_code);
+	//SLogMsg("Page fault! CR2: %p  RIP: %p  ErrorCode: %p", pRegs->cr2, pRegs->rip, pRegs->error_code);
 	
 	union
 	{
