@@ -15,7 +15,7 @@
 #include <cstdarg>
 
 #define PACKED        __attribute__((packed))
-#define NO_RETURN     __attribute__((no_return))
+#define NO_RETURN     __attribute__((noreturn))
 #define RETURNS_TWICE __attribute__((returns_twice))
 #define UNUSED        __attribute__((unused))
 
@@ -65,7 +65,11 @@ extern "C"
 	void SLogMsg(const char* fmt, ...);
 	void SLogMsgNoCR(const char* fmt, ...);
 	
-	void KernelPanic(const char* fmt, ...);
+	NO_RETURN void KernelPanic(const char* fmt, ...);
+	
+	NO_RETURN void AssertUnreachable(const char* src_file, int src_line);
+	
+	#define ASSERT_UNREACHABLE AssertUnreachable(__FILE__, __LINE__)
 };
 
 #endif//_NANOSHELL_HPP

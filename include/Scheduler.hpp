@@ -29,19 +29,34 @@ class Scheduler
 	KList<Thread*> m_ExecutionQueue;
 	KList<Thread*> m_IdleExecutionQueue; // The execution queue for idle threads.
 	KList<Thread*> m_SuspendedThreads;
+	KList<Thread*> m_ZombieThreads;      // Threads to clean up and dispose.
 	
 	Thread *m_pCurrentThread = nullptr;
 	
 	static void IdleThread();
+	static void Idle2Thread();
 	
 protected:
 	friend class Arch::CPU;
+	friend class Thread;
 	
 	// Initializes the scheduler.
 	void Init();
 	
-	// Gets the next thread on the execution queue.
-	Thread* GetNextThread();
+	// Pops the next thread from the relevant execution queue.
+	Thread* PopNextThread();
+	
+	// Gets the current thread.
+	Thread* GetCurrentThread();
+	
+	// Let the scheduler know that this thread's quantum is over.
+	void Done(Thread* pThrd);
+	
+	// For each suspended thread, check if it's suspended anymore.
+	void CheckUnsuspensionConditions();
+	
+	// Schedules in a new thread. This is used within Thread::Yield(), so use that instead.
+	void Schedule();
 	
 public:
 	// Creates a new thread object.

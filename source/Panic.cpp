@@ -74,6 +74,8 @@ extern "C" void KernelPanic(const char* fmt, ...)
 	// TODO: A stack frame unwinder. NanoShell32 can do this, why not 64?
 	
 	va_end(lst);
+	
+	Arch::IdleLoop();
 }
 
 

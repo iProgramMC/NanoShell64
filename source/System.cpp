@@ -6,6 +6,9 @@
 //  ***************************************************************
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
 //  ***************************************************************
+#include <Nanoshell.hpp>
 
-#include <stdint.h>
-#include <stddef.h>
+extern "C" void AssertUnreachable(const char* src_file, int src_line)
+{
+	KernelPanic("ASSERT_UNREACHABLE reached at %s:%d", src_file, src_line);
+}

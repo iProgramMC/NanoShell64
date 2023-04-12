@@ -11,10 +11,10 @@
 #include <EternalHeap.hpp>
 #include <Spinlock.hpp>
 
-// The eternal heap is a small (2Mib) block of memory which allows very small and
+// The eternal heap is a small (4Mib) block of memory which allows very small and
 // permanent blocks of memory to be given out during the initialization process.
 
-#define C_ETERNAL_HEAP_SIZE (2 * 1024 * 1024)
+#define C_ETERNAL_HEAP_SIZE (4 * 1024 * 1024)
 
 static Spinlock gEternalHeapSpinlock;
 static uint8_t  gEternalHeap[C_ETERNAL_HEAP_SIZE];

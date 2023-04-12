@@ -132,6 +132,19 @@ public:
 		m_pFirst = pNode;
 	}
 	
+	void Remove(ListNode* pNode)
+	{
+		if (m_pFirst == pNode)
+			m_pFirst =  m_pFirst->m_pNext;
+		if (m_pLast  == pNode)
+			m_pLast  =  m_pLast ->m_pPrev;
+		if (pNode->m_pPrev)
+			pNode->m_pPrev->m_pNext = pNode->m_pNext;
+		if (pNode->m_pNext)
+			pNode->m_pNext->m_pPrev = pNode->m_pPrev;
+		delete pNode;
+	}
+	
 	void PopBack()
 	{
 		if (Empty()) return;

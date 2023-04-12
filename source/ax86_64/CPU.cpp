@@ -51,6 +51,28 @@ void Arch::CPU::WaitForBSP()
 		Spinlock::SpinHint();
 }
 
+bool Arch::CPU::SetInterruptsEnabled(bool b)
+{
+	if (GetCurrent() != this)
+	{
+		SLogMsg("Error: Arch::CPU::SetInterruptsEnabled can only be called on the same CPU it's modifying");
+	}
+	
+	bool x = m_InterruptsEnabled;
+	
+	if (m_InterruptsEnabled != b)
+	{
+		m_InterruptsEnabled = b;
+		
+		if (b)
+			ASM("sti":::"memory");
+		else
+			ASM("cli":::"memory");
+	}
+	
+	return x;
+}
+
 void Arch::CPU::Init()
 {
 	bool bIsBSP = GetSMPResponse()->bsp_lapic_id == m_pSMPInfo->lapic_id;
@@ -127,13 +149,15 @@ void Arch::CPU::Init()
 	g_CPUsInitialized.FetchAdd(1);
 	
 	// Enable interrupts.
-	Arch::EnableInterrupts();
+	SetInterruptsEnabled(true);
 	
 	// Initialize our scheduler.
 	m_Scheduler.Init();
 	
 	if (bIsBSP)
+	{
 		OnBSPInitialized();
+	}
 }
 
 void Arch::CPU::Go()
@@ -152,7 +176,7 @@ void Arch::CPU::Go()
 		//KernelPanic("Hello there %d", 1337);
 	}
 	
-	Arch::IdleLoop();
+	Thread::Yield();
 }
 
 Arch::CPU* Arch::CPU::GetCurrent()
@@ -186,7 +210,7 @@ void Arch::CPU::OnIPI()
 			
 			g_panickedCpus.FetchAdd(1);
 			
-			Arch::DisableInterrupts();
+			SetInterruptsEnabled(false);
 			Arch::IdleLoop();
 		}
 	}

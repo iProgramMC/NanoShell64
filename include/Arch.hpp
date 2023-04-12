@@ -146,13 +146,13 @@ namespace Arch
 		/**** CPU specific variables ****/
 	private:
 		// The index of this processor.
-		uint32_t m_processorID;
+		uint32_t m_processorID = 0;
 		
 		// The SMP info we have been given.
-		limine_smp_info* m_pSMPInfo;
+		limine_smp_info* m_pSMPInfo = nullptr;
 		
 		// Whether we are the bootstrap processor or not.
-		bool m_bIsBSP;
+		bool m_bIsBSP = false;
 		
 		// The GDT of this CPU.
 		GDT m_gdt;
@@ -161,10 +161,10 @@ namespace Arch
 		IDT m_idt;
 		
 		// The main page mapping.
-		VMM::PageMapping* m_pPageMap;
+		VMM::PageMapping* m_pPageMap = nullptr;
 		
 		// The interrupt handler stack.
-		void* m_pIsrStack;
+		void* m_pIsrStack = nullptr;
 		
 		// The current IPI type.
 		eIpiType m_ipiType = eIpiType::NONE;
@@ -177,6 +177,9 @@ namespace Arch
 		
 		// The scheduler object.
 		Scheduler m_Scheduler;
+		
+		// If the interrupts are currently enabled.
+		bool m_InterruptsEnabled = false;
 		
 		// Store other fields here such as current task, etc.
 		
@@ -230,6 +233,12 @@ namespace Arch
 		// Set an interrupt gate.
 		void SetInterruptGate(uint8_t intNum, uintptr_t fnHandler, uint8_t ist = 0, uint8_t dpl = 0);
 		
+		// Get the scheduler.
+		Scheduler* GetScheduler() { return &m_Scheduler; }
+		
+		// Check if interrupts are enabled.
+		bool InterruptsEnabled() { return m_InterruptsEnabled; }
+		
 		/**** Operations that can be performed on a CPU object from anywhere. ****/
 	public:
 		CPU(uint32_t processorID, limine_smp_info* pSMPInfo, bool bIsBSP) : m_processorID(processorID), m_pSMPInfo(pSMPInfo), m_bIsBSP(bIsBSP)
@@ -244,6 +253,9 @@ namespace Arch
 		{
 			return m_bIsBSP;
 		}
+		
+		// Set whether the interrupts are enabled or not.
+		bool SetInterruptsEnabled(bool);
 		
 		// Send this CPU an IPI.
 		void SendIPI(eIpiType type);
@@ -283,7 +295,7 @@ namespace Arch
 	
 	// This loop constantly idles. This is done so that, when the CPU is not
 	// running any task, it can idle and not continue running on full throttle.
-	void IdleLoop();
+	NO_RETURN void IdleLoop();
 	
 	// x86_64 architecture specific functions.
 #ifdef TARGET_X86_64
@@ -298,12 +310,6 @@ namespace Arch
 	
 	// Writes a single byte to an I/O port.
 	void WriteByte(uint16_t port, uint8_t data);
-	
-	// Clears interrupts for the current CPU.
-	void DisableInterrupts();
-	
-	// Restore interrupts for the current CPU.
-	void EnableInterrupts();
 	
 	// MSRs:
 	enum eMSR

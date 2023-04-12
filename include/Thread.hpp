@@ -67,6 +67,13 @@ typedef void(*ThreadEntry)();
 class Thread
 {
 public:
+	// Note. This only saves important registers that will get us back
+	// to a context of a call to the Yield() function.
+	struct ThreadExecutionContext
+	{
+		uint64_t rip, cs, rflags, rsp, ss; // popped by iretq. Allows for an easy return to normal
+	};
+	
 	enum ePriority
 	{
 		IDLE,       // Idle priority. This thread will only be run when no other threads can be scheduled.
@@ -75,10 +82,14 @@ public:
 	
 	enum eStatus
 	{
+		SETUP,     // The thread is in the process of being set up.
 		SUSPENDED, // The thread has been manually suspended.
 		RUNNING,   // The thread is active.
 		ZOMBIE,    // The thread has completely died. The owner of this thread object now has to clean it up.
 	};
+	
+private:
+	static void Beginning();
 	
 	/**** Protected variables. ****/
 protected:
@@ -87,7 +98,7 @@ protected:
 	friend class Scheduler;
 	
 	// The ID of the thread.
-	int m_ID = 0;
+	int m_ID;
 	
 	// The next and previous items in the thread queue.
 	Thread *m_Prev = nullptr, *m_Next = nullptr;
@@ -96,7 +107,7 @@ protected:
 	Atomic<ePriority> m_Priority { NORMAL };
 	
 	// The status of the thread.
-	Atomic<eStatus> m_Status { SUSPENDED };
+	Atomic<eStatus> m_Status { SETUP };
 	
 	// If the thread is currently owned by the creator thread.
 	// Detach() sets this to false.
@@ -108,10 +119,24 @@ protected:
 	// Entry point of the thread.
 	ThreadEntry m_EntryPoint;
 	
+	// The stack of this thread.
+	uint64_t* m_pStack;
+	size_t    m_StackSize = 32768;
+	
+	// The saved execution context of the thread.
+	ThreadExecutionContext m_ExecContext;
+	
+	// Jumps to this thread's execution context.
+	void JumpExecContext();
+	
 public:
 	// This sets the entry point of the thread.
 	// This is only possible before the Start() function is called.
 	void SetEntryPoint(ThreadEntry pEntry);
+	
+	// This function sets the stack size of the thread.
+	// This is only possible before Start() is called!
+	void SetStackSize(size_t stack_size);
 	
 	// This starts the thread object. This is meant to be called
 	// after the thread's properties have been setup.
@@ -123,9 +148,7 @@ public:
 	// Resumes the thread's execution, if it was suspended.
 	void Resume();
 	
-	// Marks the thread as a zombie. It will get removed by the scheduler
-	// at some point in time, so best to assume the thread object is invalid
-	// after the call right away.
+	// Marks the thread as a zombie.
 	void Kill();
 	
 	// Set the priority of this thread.
@@ -138,7 +161,6 @@ public:
 	// Waits until the thread exits. This is not possible if the thread
 	// has been detached.
 	void Join();
-	
 	
 	// Yields execution of the current thread.
 	static void Yield();

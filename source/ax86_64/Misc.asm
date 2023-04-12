@@ -121,5 +121,38 @@ Arch_APIC_OnInterrupt_Asm:
 	SWAP_GS_BACK_IF_NEEDED
 	POP_ALL
 	iretq
-	
 
+; definition: NO_RETURN void JumpThreadEC( &ThreadExecutionContext );
+global JumpThreadEC
+JumpThreadEC:
+	mov  rsp, rdi ; argument #1
+	mov  rax, rsi ; argument #2. This will make SetThreadEC return this value a second time, like setjmp() would.
+	or   rax, rax
+	; failsafe to make sure we aren't just passing 0
+	jz   .is_zero
+	iretq
+.is_zero:
+	inc  rax
+	iretq
+
+; definition: RETURNS_TWICE uint64_t SetThreadEC( &ThreadExecutionContext );
+global SetThreadEC
+SetThreadEC:
+	mov rax, [rsp]      ; get EIP after our call insn (return address)
+	mov [rdi], rax      ; rip field of TEC
+	mov rax, cs         ; get the code segment
+	mov [rdi + 8], rax  ; cs field of TEC
+	pushfq              ; get the flags register
+	mov rax, [rsp]      ; get it into rax
+	add rsp, 8          ; undo pushfq's effects
+	mov [rdi + 16], rax ; rflags field of TEC
+	mov rax, rsp        ; get the rsp into eax
+	add rax, 8          ; we need to do this, since we don't want to go to our
+	                    ; return address and have the context of this function call...
+	mov [rdi + 24], rax ; rsp field of the TEC
+	mov rax, ss         ; get the stack segment
+	mov [rdi + 32], rax ; ss field of TEC
+	xor rax, rax        ; clear RAX for now. When a second return happens,
+	                    ; JumpToThreadEC will set rax to something differe
+	ret                 ; our job here is done.
+	

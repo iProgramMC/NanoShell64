@@ -73,16 +73,6 @@ void Arch::WriteByte(uint16_t port, uint8_t data)
 	ASM("outb %0, %1"::"a"((uint8_t)data),"Nd"((uint16_t)port));
 }
 
-void Arch::DisableInterrupts()
-{
-	ASM("cli":::"memory");
-}
-
-void Arch::EnableInterrupts()
-{
-	ASM("sti":::"memory");
-}
-
 uintptr_t Arch::ReadCR3()
 {
 	uintptr_t cr3 = 0;
