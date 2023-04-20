@@ -12,7 +12,7 @@
 //    not be needed, such as memcpy, memset, strlen etc.
 //
 //  ***************************************************************
-#include <Nanoshell.hpp>
+#include <NanoShell.hpp>
 
 extern "C" {
 
