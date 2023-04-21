@@ -162,9 +162,6 @@ clean:
 	@echo "Cleaning..."
 	rm -rf $(KERNEL) $(OBJ) $(HEADER_DEPS)
 
-limine:
-	make -C limine
-
 image: limine $(IMAGE_TARGET)
 
 $(IMAGE_TARGET): $(KERNEL)

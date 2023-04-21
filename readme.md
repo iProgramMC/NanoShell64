@@ -15,7 +15,7 @@ NOTE: You need Limine V3.18.3, 3.0 or older doesn't work for some reason
 In a terminal, run the following commands:
 ```
 git submodule update
-make limine
+make -C limine
 make
 ```
 (note: these are to be done on Linux or WSL1. Cygwin/MinGW32 were not tested and probably don't work.)
