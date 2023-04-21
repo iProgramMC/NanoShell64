@@ -173,10 +173,10 @@ $(IMAGE_TARGET): $(KERNEL)
 	@limine/limine-deploy $@ 2>/dev/null
 	@rm -rf $(ISO_DIR)
 
-runnow: image
+run: image
 	@echo "Running..."
 	@./run-unix.sh
 
-run: image
+runw: image
 	@echo "Invoking WSL to run the OS..."
 	@./run.sh
