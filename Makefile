@@ -163,7 +163,6 @@ clean:
 	rm -rf $(KERNEL) $(OBJ) $(HEADER_DEPS)
 
 limine:
-	git clone https://github.com/limine-bootloader/limine -b v3.18.3-binary --depth=1
 	make -C limine
 
 image: limine $(IMAGE_TARGET)
@@ -176,6 +175,10 @@ $(IMAGE_TARGET): $(KERNEL)
 	@xorriso -as mkisofs -b limine-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --protective-msdos-label $(ISO_DIR) -o $@ 2>/dev/null
 	@limine/limine-deploy $@ 2>/dev/null
 	@rm -rf $(ISO_DIR)
+
+runnow: image
+	@echo "Running..."
+	@./run-unix.sh
 
 run: image
 	@echo "Invoking WSL to run the OS..."

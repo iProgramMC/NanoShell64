@@ -12,7 +12,16 @@ The project is wholly licensed under the GNU General Public License V3, **except
 NOTE: You need Limine V3.18.3, 3.0 or older doesn't work for some reason
 
 ## Building
-If you can build [the Limine Bare-bones kernel], surely you can build this too (type `make`). :)
+In a terminal, run the following commands:
+```
+git submodule update
+make limine
+make
+```
+(note: these are to be done on Linux or WSL1. Cygwin/MinGW32 were not tested and probably don't work.)
+
+To run, invoke `./run-unix.sh` or `make runnow`. If you are using WSL 1, you can do `make run`
+to run the built iso using your native QEMU installation on Windows.
 
 ## Goals/plans
 
