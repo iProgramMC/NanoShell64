@@ -9,7 +9,7 @@
 #ifndef _ARCH_HPP
 #define _ARCH_HPP
 
-#include <Nanoshell.hpp>
+#include <NanoShell.hpp>
 #include <MemoryManager.hpp>
 #include <Scheduler.hpp>
 #include <Spinlock.hpp>

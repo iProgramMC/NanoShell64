@@ -12,7 +12,7 @@
 //   brings the kernel to life.
 //  ***************************************************************
 
-#include <Nanoshell.hpp>
+#include <NanoShell.hpp>
 #include <_limine.h>
 
 #include <Arch.hpp>

@@ -9,7 +9,7 @@
 #ifndef _THREAD_HPP
 #define _THREAD_HPP
 
-#include <Nanoshell.hpp>
+#include <NanoShell.hpp>
 #include <Spinlock.hpp>
 
 /**

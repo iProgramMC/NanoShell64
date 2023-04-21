@@ -10,7 +10,7 @@
 //  Module description:
 //    This file contains the global constructor executor.
 //  ***************************************************************
-#include <Nanoshell.hpp>
+#include <NanoShell.hpp>
 #include <MemoryManager.hpp>
 
 typedef void(*Constructor)();

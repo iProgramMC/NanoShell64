@@ -22,7 +22,7 @@
 // 0xFFFF'F000'0000'0000 - 0xFFFF'FFFE'FFFF'FFFF: The kernel heap.
 // 0xFFFF'FFFF'0000'0000 - 0xFFFF'FFFF'FFFF'FFFF: The kernel itself.
 
-#include <Nanoshell.hpp>
+#include <NanoShell.hpp>
 
 constexpr uint64_t PAGE_SIZE = 4096;
 

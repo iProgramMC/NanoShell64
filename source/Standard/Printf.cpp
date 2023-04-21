@@ -12,7 +12,7 @@
 //
 //  ***************************************************************
 
-#include <Nanoshell.hpp>
+#include <NanoShell.hpp>
 
 #define IS_64_BIT 1
 
