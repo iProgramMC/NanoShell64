@@ -18,6 +18,11 @@ namespace Arch
 	class CPU;
 }
 
+// The way this works is simple. When a thread is to be scheduled, the pointer:
+// - is popped off the relevant queue
+// - is placed as "the current thread"
+// - the old "current thread" is placed on the relevant queue, or the suspended threads list.
+
 class Scheduler
 {
 	static constexpr int MIN_THREADS = 4096;
@@ -26,7 +31,8 @@ class Scheduler
 	Thread* m_pThreadArray = nullptr;
 	
 	KList<Thread*> m_ThreadFreeList;
-	KList<Thread*> m_ExecutionQueue;
+	KList<Thread*> m_RTExecutionQueue;   // The execution queue for realtime threads.
+	KList<Thread*> m_ExecutionQueue;     // The execution queue for normal threads.
 	KList<Thread*> m_IdleExecutionQueue; // The execution queue for idle threads.
 	KList<Thread*> m_SuspendedThreads;
 	KList<Thread*> m_ZombieThreads;      // Threads to clean up and dispose.

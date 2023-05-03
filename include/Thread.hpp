@@ -71,6 +71,7 @@ public:
 	// to a context of a call to the Yield() function.
 	struct ThreadExecutionContext
 	{
+		uint64_t rbp, rbx, r12, r13, r14, r15;
 		uint64_t rip, cs, rflags, rsp, ss; // popped by iretq. Allows for an easy return to normal
 	};
 	
@@ -78,6 +79,8 @@ public:
 	{
 		IDLE,       // Idle priority. This thread will only be run when no other threads can be scheduled.
 		NORMAL,     // Normal priority. This thread will execute normally along with other threads.
+		            // No normal thread will be scheduled while real time threads are still in the execution queue.
+		REALTIME,   // Real Time priority. This thread will execute as much as it can.
 	};
 	
 	enum eStatus
