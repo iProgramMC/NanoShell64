@@ -91,47 +91,6 @@ public:
 		ZOMBIE,    // The thread has completely died. The owner of this thread object now has to clean it up.
 	};
 	
-private:
-	static void Beginning();
-	
-	/**** Protected variables. ****/
-protected:
-	// The scheduler manages the thread linked queue. We will give it permission
-	// to access our stuff below:
-	friend class Scheduler;
-	
-	// The ID of the thread.
-	int m_ID;
-	
-	// The next and previous items in the thread queue.
-	Thread *m_Prev = nullptr, *m_Next = nullptr;
-	
-	// The priority of the thread.
-	Atomic<ePriority> m_Priority { NORMAL };
-	
-	// The status of the thread.
-	Atomic<eStatus> m_Status { SETUP };
-	
-	// If the thread is currently owned by the creator thread.
-	// Detach() sets this to false.
-	Atomic<bool> m_bOwned { true };
-	
-	// The owner scheduler.
-	Scheduler* m_pScheduler;
-	
-	// Entry point of the thread.
-	ThreadEntry m_EntryPoint;
-	
-	// The stack of this thread.
-	uint64_t* m_pStack;
-	size_t    m_StackSize = 32768;
-	
-	// The saved execution context of the thread.
-	ThreadExecutionContext m_ExecContext;
-	
-	// Jumps to this thread's execution context.
-	void JumpExecContext();
-	
 public:
 	// This sets the entry point of the thread.
 	// This is only possible before the Start() function is called.
@@ -167,6 +126,50 @@ public:
 	
 	// Yields execution of the current thread.
 	static void Yield();
+	
+private:
+	static void Beginning();
+	
+	/**** Protected variables. ****/
+protected:
+	// The scheduler manages the thread linked queue. We will give it permission
+	// to access our stuff below:
+	friend class Scheduler;
+	
+	// Also allow comparison structs to access our protected fields.
+	friend struct Thread_ExecQueueComparator;
+	
+	// The ID of the thread.
+	int m_ID;
+	
+	// The next and previous items in the thread queue.
+	Thread *m_Prev = nullptr, *m_Next = nullptr;
+	
+	// The priority of the thread.
+	Atomic<ePriority> m_Priority { NORMAL };
+	
+	// The status of the thread.
+	Atomic<eStatus> m_Status { SETUP };
+	
+	// If the thread is currently owned by the creator thread.
+	// Detach() sets this to false.
+	Atomic<bool> m_bOwned { true };
+	
+	// The owner scheduler.
+	Scheduler* m_pScheduler;
+	
+	// Entry point of the thread.
+	ThreadEntry m_EntryPoint;
+	
+	// The stack of this thread.
+	uint64_t* m_pStack;
+	size_t    m_StackSize = 32768;
+	
+	// The saved execution context of the thread.
+	ThreadExecutionContext m_ExecContext;
+	
+	// Jumps to this thread's execution context.
+	void JumpExecContext();
 };
 
 #endif//_THREAD_HPP

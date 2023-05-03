@@ -1,5 +1,5 @@
 //  ***************************************************************
-//  KPriorityQueue.hpp - Creation date: 12/04/2023
+//  KPriorityQueue.hpp - Creation date: 02/05/2023
 //  -------------------------------------------------------------
 //  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
 //
@@ -7,13 +7,27 @@
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
 //  ***************************************************************
 
+#ifndef _KPRIORITYQUEUE_HPP
+#define _KPRIORITYQUEUE_HPP
+
 #include <KArray.hpp>
+
+// Maybe we'll move these to a different header file.
+template <typename T>
+struct KGreater
+{
+	bool operator() (const T& a, const T& b) const
+	{
+		return a > b;
+	}
+};
 
 // This is implemented with KArray and a binary max heap on top.
 
 // Note: Why won't the compiler simply accept "Size()" instead of "this->Size()"?
 
-template <typename T>
+// Comp(a, b) essentially calls a > b by default.
+template <typename T, typename Comp = KGreater<T>>
 class KPriorityQueue : public KArray<T>
 {
 public:
@@ -26,8 +40,6 @@ public:
 	void Erase(size_t index) override
 	{
 		if (index >= this->Size()) return;
-		
-		KPriorityQueue<T>& me = *this;
 		
 		KArray<T>::EraseUnordered(index);
 		SortDown(index);
@@ -46,7 +58,9 @@ private:
 		if (index == 0) // already at the top
 			return;
 		
-		KPriorityQueue<T>& me = *this;
+		auto& me = *this;
+		
+		Comp comp;
 		
 		size_t parentIndex = (index - 1) / 2;
 		while (true)
@@ -55,7 +69,7 @@ private:
 			
 			T& parent = me[parentIndex];
 			
-			if (parent < me[index])
+			if (comp(me[index], parent))
 			{
 				T temp = parent;
 				parent = me[index];
@@ -75,7 +89,9 @@ private:
 	{
 		if (index >= this->Size()) return;
 		
-		KPriorityQueue<T>& me = *this;
+		auto& me = *this;
+		
+		Comp comp;
 		
 		while (true)
 		{
@@ -87,7 +103,7 @@ private:
 			{
 				swapIdx = ciLeft;
 				
-				if (ciRight < this->Size() && me[ciLeft] < me[ciRight])
+				if (ciRight < this->Size() && comp(me[ciRight], me[ciLeft]))
 					swapIdx = ciRight;
 			}
 			else break;
@@ -104,3 +120,5 @@ private:
 		}
 	}
 };
+
+#endif

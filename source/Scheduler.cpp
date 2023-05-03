@@ -16,8 +16,8 @@ void Scheduler::IdleThread()
 	{
 		LogMsg("Idle thread from CPU %u", Arch::CPU::GetCurrent()->ID());
 		
-		//Thread::Yield();
-		Arch::Halt();
+		Thread::Yield();
+		//Arch::Halt();
 	}
 }
 void Scheduler::Idle2Thread()
@@ -26,8 +26,8 @@ void Scheduler::Idle2Thread()
 	{
 		LogMsg("Normal thread from CPU %u", Arch::CPU::GetCurrent()->ID());
 		
-		//Thread::Yield();
-		Arch::Halt();
+		Thread::Yield();
+		//Arch::Halt();
 	}
 }
 
@@ -88,18 +88,7 @@ void Scheduler::Done(Thread* pThread)
 	switch (pThread->m_Status.Load())
 	{
 		case Thread::RUNNING:
-			switch (pThread->m_Priority.Load())
-			{
-				case Thread::IDLE:
-					m_IdleExecutionQueue.AddBack(pThread);
-					break;
-				case Thread::NORMAL:
-					m_ExecutionQueue.AddBack(pThread);
-					break;
-				case Thread::REALTIME:
-					m_RTExecutionQueue.AddBack(pThread);
-					break;
-			}
+			m_ExecutionQueue.PushBack(pThread);
 			break;
 		case Thread::SETUP:
 			// not sure how we got there. the scheduler really shouldn't
@@ -126,31 +115,15 @@ void Scheduler::Done(Thread* pThread)
 
 Thread* Scheduler::PopNextThread()
 {
-	// look in the realtime priority queue
-	if (!m_RTExecutionQueue.Empty())
+	Thread* pThrd = nullptr;
+	
+	if (m_ExecutionQueue.Size())
 	{
-		Thread *pThread = m_RTExecutionQueue.Front();
-		m_RTExecutionQueue.PopFront();
-		return pThread;
+		pThrd = m_ExecutionQueue.Front();
+		m_ExecutionQueue.Erase(0);
 	}
 	
-	// look in the normal priority queue
-	if (!m_ExecutionQueue.Empty())
-	{
-		Thread *pThread = m_ExecutionQueue.Front();
-		m_ExecutionQueue.PopFront();
-		return pThread;
-	}
-	
-	// nothing in the normal queue, check the idle queue now
-	if (!m_IdleExecutionQueue.Empty())
-	{
-		Thread *pThread = m_IdleExecutionQueue.Front();
-		m_IdleExecutionQueue.PopFront();
-		return pThread;
-	}
-	
-	return nullptr;
+	return pThrd;
 }
 
 // looks through the list of suspended threads and checks if any are supposed to be unsuspended.

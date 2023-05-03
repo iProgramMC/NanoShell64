@@ -36,7 +36,7 @@ static void* OperatorNew(size_t size)
 	void* pMem = VMM::KernelHeap::Allocate(size);
 	
 	if (!pMem)
-		KernelPanic("ERROR: cannot new[](%ll), kernel heap gave us NULL.");
+		KernelPanic("ERROR: cannot new[](%z), kernel heap gave us NULL.", size);
 	
 	return pMem;
 }

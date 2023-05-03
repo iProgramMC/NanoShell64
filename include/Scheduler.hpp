@@ -11,12 +11,21 @@
 
 #include <Thread.hpp>
 #include <KList.hpp>
+#include <KPriorityQueue.hpp>
 
 // Forward declare the CPU class since we need it as a friend of Scheduler.
 namespace Arch
 {
 	class CPU;
 }
+
+struct Thread_ExecQueueComparator
+{
+	bool operator() (Thread* threadA, Thread* threadB) const
+	{
+		return threadA->m_Priority.Load() > threadB->m_Priority.Load();
+	}
+};
 
 // The way this works is simple. When a thread is to be scheduled, the pointer:
 // - is popped off the relevant queue
@@ -31,9 +40,14 @@ class Scheduler
 	Thread* m_pThreadArray = nullptr;
 	
 	KList<Thread*> m_ThreadFreeList;
+	/*
 	KList<Thread*> m_RTExecutionQueue;   // The execution queue for realtime threads.
 	KList<Thread*> m_ExecutionQueue;     // The execution queue for normal threads.
 	KList<Thread*> m_IdleExecutionQueue; // The execution queue for idle threads.
+	*/
+	
+	KPriorityQueue<Thread*, Thread_ExecQueueComparator> m_ExecutionQueue;
+	
 	KList<Thread*> m_SuspendedThreads;
 	KList<Thread*> m_ZombieThreads;      // Threads to clean up and dispose.
 	

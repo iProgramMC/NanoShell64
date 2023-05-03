@@ -7,6 +7,9 @@
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
 //  ***************************************************************
 
+#ifndef _KLIST_HPP
+#define _KLIST_HPP
+
 // NOTE: This structure is NOT thread safe.
 
 // This linked list based structure can be used as either a linked list,
@@ -171,3 +174,5 @@ public:
 		m_pLast = pNode;
 	}
 };
+
+#endif

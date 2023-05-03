@@ -1,11 +1,14 @@
 //  ***************************************************************
-//  KArray.hpp - Creation date: 12/04/2023
+//  KArray.hpp - Creation date: 02/05/2023
 //  -------------------------------------------------------------
 //  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
 //
 //  ***************************************************************
 //  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
 //  ***************************************************************
+
+#ifndef _KARRAY_HPP
+#define _KARRAY_HPP
 
 // NOTE: This structure is NOT thread safe.
 
@@ -14,15 +17,14 @@
 // This will mostly be used with pointer types, so this is probably fine.
 
 template<typename T>
-class KPriorityQueue;
-
-template<typename T>
 class KArray
 {
 public:
 	KArray()
 	{
-		SetupDefaultContainer();
+		m_container = nullptr;
+		m_container_capacity = 0;
+		m_container_size     = 0;
 	}
 	~KArray()
 	{
@@ -37,6 +39,19 @@ public:
 	
 	void Reserve(size_t sz)
 	{
+		if (m_container_capacity == 0)
+		{
+			SetupDefaultContainer();
+			// call reserve() again;
+			
+			Reserve(sz);
+			
+			return;
+		}
+		
+		if (sz == 0) return; // considered an error
+		if (sz == m_container_capacity) return;
+		
 		if (sz < m_container_size)
 			sz = m_container_size;
 		
@@ -118,7 +133,6 @@ public:
 	}
 	
 private:
-	
 	void SetupDefaultContainer()
 	{
 		m_container_capacity = 16; // the default.
@@ -126,10 +140,10 @@ private:
 		m_container_size = 0;
 	}
 	
-protected:
+private:
 	T* m_container;
 	size_t m_container_size;
 	size_t m_container_capacity;
-	
-	friend class KPriorityQueue<T>;
 };
+
+#endif
