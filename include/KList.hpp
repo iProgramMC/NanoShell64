@@ -89,6 +89,12 @@ public:
 			m_pLast = pNode;
 	}
 	
+	~KList()
+	{
+		while (!Empty())
+			PopBack();
+	}
+	
 	T Front()
 	{
 		// WARNING: Don't call this while the list is empty!
