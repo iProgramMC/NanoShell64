@@ -129,6 +129,18 @@ namespace Arch
 		uintptr_t GetLapicBase();
 	};
 	
+	// A small driver to allow calibration of the APIC.
+	// Note: Using this on more than 1 CPU WILL lead to problems,
+	// so only use this on one at a time.
+	namespace PIT
+	{
+		// Reads a short from the latch counter.
+		uint16_t Read();
+		
+		// Performs a polling sleep. Supports about 50 ms max.
+		void Sleep(uint64_t nanoseconds);
+	};
+	
 #endif
 	
 	class CPU
