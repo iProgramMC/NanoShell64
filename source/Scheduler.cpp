@@ -16,8 +16,8 @@ void Scheduler::IdleThread()
 	{
 		LogMsg("Idle thread from CPU %u", Arch::CPU::GetCurrent()->ID());
 		
-		Thread::Yield();
-		//Arch::Halt();
+		//Thread::Yield();
+		Arch::Halt();
 	}
 }
 void Scheduler::Idle2Thread()
@@ -26,8 +26,8 @@ void Scheduler::Idle2Thread()
 	{
 		LogMsg("Normal thread from CPU %u", Arch::CPU::GetCurrent()->ID());
 		
-		Thread::Yield();
-		//Arch::Halt();
+		//Thread::Yield();
+		Arch::Halt();
 	}
 }
 

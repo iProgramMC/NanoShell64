@@ -18,6 +18,8 @@
 
 extern Atomic<int> g_CPUsInitialized; // Arch.cpp
 
+Spinlock g_CalibrateSpinlock;
+
 extern "C" void CPU_OnPageFault_Asm();
 extern "C" void Arch_APIC_OnInterrupt_Asm();
 extern "C" void CPU_OnPageFault(Registers* pRegs)
@@ -73,6 +75,16 @@ bool Arch::CPU::SetInterruptsEnabled(bool b)
 	return x;
 }
 
+void Arch::CPU::CalibrateTimer()
+{
+	// Since the calibration operation needs to be performed carefully, we can't have
+	// interrupts enabled, or anyone else messing with the PIT. Take ownership of the
+	// PIT now.
+	LockGuard lg(g_CalibrateSpinlock);
+	
+	m_LapicTicksPerMS = APIC::CalibrateTimer();
+}
+
 void Arch::CPU::Init()
 {
 	bool bIsBSP = GetSMPResponse()->bsp_lapic_id == m_pSMPInfo->lapic_id;
@@ -105,43 +117,16 @@ void Arch::CPU::Init()
 	m_pPageMap = PageMapping::GetFromCR3()->Clone(false);
 	m_pPageMap->SwitchTo();
 	
-	/*
-	LogMsg("Cloned, gonna map...");
-	
-	// We shall at least try to map a new page in. Use the new fangled tech.
-	uintptr_t addr = 0x100000;
-	
-	bool result = m_pPageMap->MapPage(addr);
-	
-	LogMsg("Mapped?");
-	
-	if (!result)
+	if (bIsBSP)
 	{
-		LogMsg("Couldn't MapPage");
+		RSD::Load();
 	}
-	else
-	{
-		// try out our new fangled mapping!
-		*((uint64_t*)addr) = 0xFEDCBA9876543210 + m_processorID;
-		ASM("":::"memory");
-		LogMsg("Got back: %p", *((uint64_t*)addr));
-	}
-	*/
-	
-	/*
-	// Try to allocate and test some memory.
-	LogMsg("Allocating from the kernel heap....");
-	uint8_t * p1 = new(nopanic) uint8_t[4286];
-	uint8_t * p2 = new(nopanic) uint8_t[5768];
-	
-	LogMsg("p1 = %p, p2 = %p", p1, p2);
-	
-	delete[] p1;
-	delete[] p2;
-	*/
 	
 	// Initialize the APIC on this CPU.
 	APIC::Init();
+	
+	// Calibrate its timer.
+	CalibrateTimer();
 	
 	// The X will be replaced.
 	LogMsg("Hello from processor #%d", m_processorID);
@@ -155,7 +140,7 @@ void Arch::CPU::Init()
 	m_Scheduler.Init();
 	
 	if (bIsBSP)
-	{
+	{	
 		OnBSPInitialized();
 	}
 }

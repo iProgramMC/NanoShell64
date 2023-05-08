@@ -96,4 +96,12 @@ void __cxa_pure_virtual()
 	LogMsg("Pure virtual function!");
 }
 
+// what the hell
+void __dso_handle()
+{
+}
+void __cxa_atexit()
+{
+}
+
 };

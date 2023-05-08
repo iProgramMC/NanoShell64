@@ -108,6 +108,53 @@ namespace Arch
 		}
 	};
 	
+	namespace RSD
+	{
+		struct Table
+		{
+			// Header.
+			char     m_Signature[4];
+			uint32_t m_Length;
+			uint8_t  m_Revision;
+			uint8_t  m_Checksum;
+			char     m_OemId[6];
+			char     m_OemTableId[6];
+			uint32_t m_OemRevision;
+			uint32_t m_CreatorId;
+			uint32_t m_CreatorRevision;
+			
+			uint32_t m_SubSDTs[0];
+			
+			int GetSubSDTCount() const
+			{
+				size_t sizeOfHeader = (size_t)&(((Table*)nullptr)->m_SubSDTs);
+				
+				return (m_Length - sizeOfHeader) / sizeof(uint32_t);
+			}
+		};
+		
+		struct Descriptor
+		{
+			char     m_Signature[8];
+			uint8_t  m_Checksum;
+			char     m_OemId[6];
+			uint8_t  m_Revision;
+			uint32_t m_RsdtAddress;
+			
+			uintptr_t GetRSDTAddress() const
+			{
+				return m_RsdtAddress;
+			}
+		}
+		PACKED;
+		
+		// Load an RSDT table.
+		void LoadTable(RSD::Table* pTable);
+		
+		// Load the RSDP root table.
+		void Load();
+	}
+	
 	namespace APIC
 	{
 		// Ensure the APIC is supported by checking CPUID
@@ -127,6 +174,11 @@ namespace Arch
 		
 		// Get the LAPIC's base address. This is offset by the HHDM.
 		uintptr_t GetLapicBase();
+		
+		// Calibrate the APIC timer using the PIT. Used by the CPU.
+		// Returns the frequency of ticks per millisecond.
+		// This is not thread safe, so be sure to add locking before going in.
+		uint64_t CalibrateTimer();
 	};
 	
 	// A small driver to allow calibration of the APIC.
@@ -193,6 +245,9 @@ namespace Arch
 		// If the interrupts are currently enabled.
 		bool m_InterruptsEnabled = false;
 		
+		// The number of LAPIC timer ticks per millisecond;
+		uint64_t m_LapicTicksPerMS = 0;
+		
 		// Store other fields here such as current task, etc.
 		
 		/**** Private CPU object functions. ****/
@@ -217,6 +272,9 @@ namespace Arch
 		
 		// Marks the BSP as initialized.
 		void OnBSPInitialized();
+		
+		// Calibrates the LAPIC timer using the PIT.
+		void CalibrateTimer();
 #endif
 		/**** Operations that should be run within this CPU's context, but are otherwise public ****/
 	public:

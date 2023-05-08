@@ -16,6 +16,9 @@
 #include <Spinlock.hpp>
 
 #define C_SPURIOUS_INTERRUPT_VECTOR (0xFF)
+#define C_APIC_TIMER_DIVIDE_BY_128  (0b1010) // Intel SDM Vol.3A Ch.11 "11.5.4 APIC Timer". Bit 2 is reserved.
+
+#define APIC_LVT_INT_MASKED (0x10000)
 
 #define IA32_APIC_BASE_MSR (0x1B)
 
@@ -170,3 +173,40 @@ void Arch::CPU::SendIPI(eIpiType type)
 	
 	// The CPU in question will unlock the IPI spinlock.
 }
+
+uint64_t Arch::APIC::CalibrateTimer()
+{
+	// Tell the APIC timer to use divider 16.
+	APIC::WriteReg(APIC_REG_TMR_DIV_CFG, C_APIC_TIMER_DIVIDE_BY_128);
+	
+	uint64_t avg = 0;
+	
+	constexpr int nRuns = 16;
+	
+	for (int i = 0; i < nRuns; i++)
+	{		
+		// Set APIC init counter to -1.
+		APIC::WriteReg(APIC_REG_TMR_INIT_CNT, 0xFFFFFFFF);
+		
+		// Sleep for 10 ms
+		PIT::Sleep(10*1000*1000);
+		
+		// Stop the APIC timer.
+		APIC::WriteReg(APIC_REG_LVT_TIMER, APIC_LVT_INT_MASKED);
+		
+		// Read the current count.
+		uint64_t ticksPerMs = 0xFFFFFFFF - APIC::ReadReg(APIC_REG_TMR_CURR_CNT);
+		SLogMsg("CPU %d Run %d: %lld ticks/ms.", CPU::GetCurrent()->ID(), i, ticksPerMs);
+		
+		avg += ticksPerMs;
+	}
+	
+	avg /= nRuns;
+	avg /= 10;
+	
+	LogMsg("CPU %d has an APIC timer frequency of approximately %lld ticks/ms.", CPU::GetCurrent()->ID(), avg);
+	
+	
+	return avg;
+}
+
