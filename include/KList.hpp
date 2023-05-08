@@ -25,32 +25,61 @@ class KList
 		
 		ListNode *m_pPrev = nullptr, *m_pNext = nullptr;
 		
-		T m_pData;
+		T m_data;
 		
 	public:
+		ListNode(T data)
+		{
+			m_data = data;
+		}
+	};
+	
+	class ListNodeIterator
+	{
+		ListNode* m_pNode;
+		
+	public:
+		ListNodeIterator(ListNode* pNode)
+		{
+			m_pNode = pNode;	
+		}
+		
 		T& operator*()
 		{
-			return m_pData;
+			return m_pNode->m_data;
 		}
 		
-		T* operator->()
+		bool Valid()
 		{
-			return &m_pData;
+			return m_pNode != nullptr;
 		}
 		
-		ListNode(T pData)
+		ListNodeIterator& operator++()
 		{
-			m_pData = pData;
+			m_pNode = m_pNode->m_pNext;
+			
+			return (*this);
 		}
 		
-		ListNode* Next()
+		ListNodeIterator operator++(UNUSED int unused)
 		{
-			return m_pNext;
+			ListNodeIterator iter = (*this);
+			++(*this);
+			return iter;
 		}
 		
-		ListNode* Prev()
+		ListNodeIterator& operator--()
 		{
-			return m_pPrev;
+			m_pNode = m_pNode->m_pPrev;
+			
+			return (*this);
+		}
+		
+		ListNodeIterator operator--(UNUSED int unused)
+		{
+			ListNodeIterator iter = (*this);
+			--(*this);
+			return iter;
 		}
 	};
 	
@@ -101,23 +130,23 @@ public:
 	T Front()
 	{
 		// WARNING: Don't call this while the list is empty!
-		return **m_pFirst;
+		return m_pFirst->m_data;
 	}
 	
 	T Back()
 	{
 		// WARNING: Don't call this while the list is empty!
-		return *m_pLast;
+		return m_pLast->m_data;
 	}
 	
-	ListNode* FrontNode()
+	ListNodeIterator Begin()
 	{
-		return m_pFirst;
+		return ListNodeIterator(m_pFirst);
 	}
 	
-	ListNode* BackNode()
+	ListNodeIterator End()
 	{
-		return m_pLast;
+		return ListNodeIterator(m_pLast);
 	}
 	
 	void PopFront()
