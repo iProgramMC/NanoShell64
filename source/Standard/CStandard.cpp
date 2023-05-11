@@ -55,4 +55,43 @@ char* strcat(char* s, const char * src)
 	return strcpy(s + strlen(s), src);
 }
 
+int memcmp(const void* s1, const void* s2, size_t n)
+{
+	uint8_t* b1 = (uint8_t*)s1;
+	uint8_t* b2 = (uint8_t*)s2;
+	
+	while (n--)
+	{
+		if (*b1 < *b2)
+			return -1;
+		if (*b1 > *b2)
+			return 1;
+		
+		b1++, b2++;
+	}
+	
+	// the memory is equal
+	return 0;
+}
+
+int strcmp(const char* s1, const char* s2)
+{
+	while (true)
+	{
+		if (!*s1 && !*s2)
+			return 0;
+		
+		// if either one of the pointers points to a 0 character,
+		// either case applies, so it's fine.
+		if (*s1 < *s2)
+			return -1;
+		if (*s1 > *s2)
+			return 1;
+		
+		s1++;
+		s2++;
+	}
+	return 0;
+}
+
 };

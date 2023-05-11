@@ -59,6 +59,9 @@ void RSD::Load()
 		memcpy(thing, pTable->m_Signature, 4);
 		
 		LogMsg("RSD entry: %s", thing);
+		
+		if (strcmp(thing, "HPET") == 0)
+			HPET::Found(pTable);
 	}
 }
 

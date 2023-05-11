@@ -54,6 +54,8 @@ extern "C"
 	void* memset(void* dst, int c, size_t n);
 	char* strcpy(char* dst, const char* src);
 	char* strcat(char* dst, const char* src);
+	int strcmp(const char* s1, const char* s2);
+	int memcmp(const void* s1, const void* s2, size_t n);
 	size_t strlen(const char * s);
 	int vsnprintf(char* buf, size_t sz, const char* fmt, va_list arg);
 	int snprintf(char* buf, size_t sz, const char* fmt, ...);

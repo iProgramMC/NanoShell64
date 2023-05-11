@@ -155,6 +155,12 @@ namespace Arch
 		void Load();
 	}
 	
+	namespace HPET
+	{
+		// The function that loads the HPET's data from the RSDT entry.
+		void Found(RSD::Table*);
+	}
+	
 	namespace APIC
 	{
 		// Ensure the APIC is supported by checking CPUID

@@ -19,7 +19,8 @@
 // 0x0000'0000'0000'0000 - 0x0000'FFFF'FFFF'FFFF: User mappable memory region.
 // 0x0001'0000'0000'0000 - 0xFFFE'FFFF'FFFF'FFFF: Non-canonical address gap.
 // 0xFFFF'8000'0000'0000 - 0xFFFF'EFFF'FFFF'FFFF: The HHDM mapping. This part and the ones below will have their PML4's verbatim copied
-// 0xFFFF'F000'0000'0000 - 0xFFFF'FFFE'FFFF'FFFF: The kernel heap.
+// 0xFFFF'F000'0000'0000 - 0xFFFF'FFFD'FFFF'FFFF: The kernel heap.
+// 0xFFFF'FFFE'0000'0000 - 0xFFFE'FFFF'FFFF'FFFF: Single page hrdware mappings.
 // 0xFFFF'FFFF'0000'0000 - 0xFFFF'FFFF'FFFF'FFFF: The kernel itself.
 
 #include <NanoShell.hpp>
@@ -79,6 +80,8 @@ namespace VMM
 {
 	constexpr uintptr_t C_KERNEL_HEAP_START = 0xFFFFA00000000000;
 	constexpr uintptr_t C_KERNEL_HEAP_SIZE  = 0x800000; // 8 MB
+	
+	constexpr uintptr_t C_HPET_MAP_ADDRESS  = 0xFFFFFFFE00000000;
 	
 	// The PML4 indices of the memory regions.
 	enum ePml4Limit
