@@ -19,6 +19,8 @@
 #define RETURNS_TWICE __attribute__((returns_twice))
 #define UNUSED        __attribute__((unused))
 
+#define BIT(x) (1ULL << (x))
+
 inline void *operator new(size_t, void *p)     throw() { return p; }
 inline void *operator new[](size_t, void *p)   throw() { return p; }
 inline void  operator delete  (void *, void *) throw() { };

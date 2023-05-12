@@ -96,6 +96,22 @@ namespace VMM
 		P_KERN_END    = 0x200,
 	};
 	
+	// Flags for a page entry.
+	constexpr uint64_t
+	PE_PRESENT        = BIT(0),
+	PE_READWRITE      = BIT(1),
+	PE_SUPERVISOR     = BIT(2),
+	PE_WRITETHROUGH   = BIT(3),
+	PE_CACHEDISABLE   = BIT(4),
+	PE_ACCESSED       = BIT(5),
+	PE_DIRTY          = BIT(6),
+	PE_PAT            = BIT(7),
+	PE_GLOBAL         = BIT(8),
+	PE_PARTOFPMM      = BIT(9),  // NanoShell64 specific
+	PE_NEEDALLOCPAGE  = BIT(10), // NanoShell64 specific
+	PE_BIT11          = BIT(11),
+	PE_EXECUTEDISABLE = BIT(63);
+	
 	// Represents a single page entry.
 	union PageEntry
 	{
@@ -121,9 +137,23 @@ namespace VMM
 			int  m_protKey       : 4; // bits 59-62 (protection key, ignores unless CR4.PKE or CR4.PKS is set and this is a page tree leaf)
 			bool m_execDisable   : 1; // bit 63: Disable execution from this page.
 		};
+		
 		uint64_t m_data;
 		
 		PageEntry() = default;
+		
+		PageEntry(uint64_t addr, uint64_t flags, uint64_t default_flags = PE_PRESENT, int pkey = 0)
+		{
+			m_data = 0;
+			
+			m_address = addr >> 12;
+			m_protKey = pkey;
+			
+			m_data |= flags;
+			m_data |= default_flags;
+		}
+		
+		/*
 		PageEntry(uint64_t addr, bool rw, bool us, bool xd, bool pop, bool nap, bool pr = true,
 		          int pk = 0, bool wt = false, bool cd = false, bool pat = false, bool glb = false) // useless stuff
 		{
@@ -140,6 +170,7 @@ namespace VMM
 			m_global        = glb;
 			m_protKey       = pk;
 		}
+		*/
 	};
 	
 	struct PageTable

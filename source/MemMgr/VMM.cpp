@@ -91,7 +91,7 @@ bool PageMapping::MapPage(uintptr_t addr, const PageEntry & pe)
 		if (page == PMM::INVALID_PAGE) return false;
 		pml3 = (PML3*)(Arch::GetHHDMOffset() + page);
 		memset(pml3, 0, sizeof *pml3);
-		m_entries[index_PML4] = PageEntry(page, true, false, false, true, false);
+		m_entries[index_PML4] = PageEntry(page, PE_PRESENT | PE_READWRITE | PE_PARTOFPMM);
 	}
 	
 	// if we don't have a pml2 here:
@@ -103,7 +103,7 @@ bool PageMapping::MapPage(uintptr_t addr, const PageEntry & pe)
 		if (page == PMM::INVALID_PAGE) return false;
 		pd = (PageDirectory*)(Arch::GetHHDMOffset() + page);
 		memset(pd, 0, sizeof *pd);
-		pml3->m_entries[index_PML3] = PageEntry(page, true, false, false, true, false);
+		pml3->m_entries[index_PML3] = PageEntry(page, PE_PRESENT | PE_READWRITE | PE_PARTOFPMM);
 	}
 	
 	// if we don't have a pml1 here:
@@ -115,7 +115,7 @@ bool PageMapping::MapPage(uintptr_t addr, const PageEntry & pe)
 		if (page == PMM::INVALID_PAGE) return false;
 		pt = (PageTable*)(Arch::GetHHDMOffset() + page);
 		memset(pt, 0, sizeof *pt);
-		pd->m_entries[index_PML2] = PageEntry(page, true, false, false, true, false);
+		pd->m_entries[index_PML2] = PageEntry(page, PE_PRESENT | PE_READWRITE | PE_PARTOFPMM);
 	}
 	
 	// unmap whatever was here previously.
@@ -139,8 +139,16 @@ bool PageMapping::MapPage(uintptr_t addr, bool rw, bool super, bool xd)
 	PageEntry pe(pm, rw, super, xd, true, false);
 	*/
 	
-	// Create a page entry.
-	PageEntry pe(0, rw, super, xd, true, true, false);
+	uint64_t flags = PE_PARTOFPMM | PE_NEEDALLOCPAGE;
+	if (rw)
+		flags |= PE_READWRITE;
+	if (super)
+		flags |= PE_SUPERVISOR;
+	if (xd)
+		flags |= PE_EXECUTEDISABLE;
+	
+	// Create a page entry. Note that the default_flags are overridden here.
+	PageEntry pe(0, flags, 0);
 	
 	return MapPage(addr, pe);
 }
