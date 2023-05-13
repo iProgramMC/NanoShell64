@@ -316,6 +316,21 @@ namespace Arch
 			return m_processorID;
 		}
 		
+		uint64_t GetStartingTSC() const
+		{
+			return m_StartingTSC;
+		}
+		
+		uint64_t GetTSCTicksPerMS() const
+		{
+			return m_TscTicksPerMS;
+		}
+		
+		uint64_t GetLapicTicksPerMS() const
+		{
+			return m_LapicTicksPerMS;
+		}
+		
 		void UnlockIpiSpinlock()
 		{
 			m_ipiSpinlock.Unlock();
@@ -392,6 +407,11 @@ namespace Arch
 			return GetCurrent()->IsBootstrap();
 		}
 	};
+	
+	typedef uint64_t(*GetTickCountMethod)();
+	
+	// Set the method used for GetTickCount.
+	void SetGetTickCountMethod(GetTickCountMethod ptr);
 	
 	// Waits until the next interrupt.
 	void Halt();

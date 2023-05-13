@@ -26,10 +26,17 @@ void Scheduler::Idle2Thread()
 {
 	while (true)
 	{
-		LogMsg("Normal thread from CPU %u", Arch::CPU::GetCurrent()->ID());
+		uint64_t tc  = Arch::GetTickCount() / 1000;
+		uint64_t tc2 = Arch::HPET::GetTickCount() / 1000;
+		unsigned id  = Arch::CPU::GetCurrent()->ID();
 		
-		//Thread::Yield();
-		Arch::Halt();
+		if (id == 0)
+		{
+			LogMsg("[%3lld.%06lld] [%3lld.%06lld] Normal thread from CPU %u", tc/1000000, tc%1000000, tc2/1000000, tc2%1000000, id);
+			Arch::HPET::PolledSleep(500*1000*1000);
+		}
+		else
+			Arch::Halt();
 	}
 }
 

@@ -18,6 +18,11 @@
 #include <EternalHeap.hpp>
 #include <Terminal.hpp>
 
+Atomic<int> g_CPUsInitialized;
+
+namespace Arch
+{
+
 volatile limine_hhdm_request g_HHDMRequest =
 {
 	.id = LIMINE_HHDM_REQUEST,
@@ -25,67 +30,67 @@ volatile limine_hhdm_request g_HHDMRequest =
 	.response = NULL,
 };
 
-limine_hhdm_response* Arch::CPU::GetHHDMResponse()
+limine_hhdm_response* CPU::GetHHDMResponse()
 {
 	return g_HHDMRequest.response;
 }
 
-uintptr_t Arch::GetHHDMOffset()
+uintptr_t GetHHDMOffset()
 {
 	return g_HHDMRequest.response->offset;
 }
 
-void Arch::Invalidate(uintptr_t ptr)
+void Invalidate(uintptr_t ptr)
 {
 	ASM("invlpg (%0)"::"r"(ptr):"memory");
 }
 
-void Arch::WritePhys(uintptr_t ptr, uint32_t thing)
+void WritePhys(uintptr_t ptr, uint32_t thing)
 {
 	*((uint32_t*)(GetHHDMOffset() + ptr)) = thing;
 }
 
-uint32_t Arch::ReadPhys(uintptr_t ptr)
+uint32_t ReadPhys(uintptr_t ptr)
 {
 	return *((uint32_t*)(GetHHDMOffset() + ptr));
 }
 
-void Arch::Halt()
+void Halt()
 {
 	ASM("hlt":::"memory");
 }
 
-void Arch::IdleLoop()
+void IdleLoop()
 {
 	for (;;)
 		Halt();
 }
 
-uint8_t Arch::ReadByte(uint16_t port)
+uint8_t ReadByte(uint16_t port)
 {
     uint8_t rv;
     ASM("inb %1, %0" : "=a" (rv) : "dN" (port));
     return rv;
 }
 
-void Arch::WriteByte(uint16_t port, uint8_t data)
+void WriteByte(uint16_t port, uint8_t data)
 {
 	ASM("outb %0, %1"::"a"((uint8_t)data),"Nd"((uint16_t)port));
 }
 
-uintptr_t Arch::ReadCR3()
+uintptr_t ReadCR3()
 {
 	uintptr_t cr3 = 0;
 	ASM("movq %%cr3, %0":"=r"(cr3));
 	return cr3;
 }
 
-void Arch::WriteCR3(uintptr_t cr3)
+void WriteCR3(uintptr_t cr3)
 {
 	ASM("movq %0, %%cr3"::"r"(cr3));
 }
 
-void Arch::WriteMSR(uint32_t msr, uint64_t value)
+void WriteMSR(uint32_t msr, uint64_t value)
 {
 	uint32_t edx = uint32_t(value >> 32);
 	uint32_t eax = uint32_t(value);
@@ -93,7 +98,7 @@ void Arch::WriteMSR(uint32_t msr, uint64_t value)
 	ASM("wrmsr"::"d"(edx),"a"(eax),"c"(msr));
 }
 
-uint64_t Arch::ReadMSR(uint32_t msr)
+uint64_t ReadMSR(uint32_t msr)
 {
 	uint32_t edx, eax;
 	
@@ -102,13 +107,11 @@ uint64_t Arch::ReadMSR(uint32_t msr)
 	return uint64_t(edx) << 32 | eax;
 }
 
-Atomic<int> g_CPUsInitialized;
-
 // Since the pointer to the structure is passed into RDI, assuming
 // the x86_64 System V ABI, the first argument corresponds to RDI.
-void Arch::CPU::Start(limine_smp_info* pInfo)
+void CPU::Start(limine_smp_info* pInfo)
 {
-	Arch::CPU* pCpu = (Arch::CPU*)pInfo->extra_argument;
+	CPU* pCpu = (CPU*)pInfo->extra_argument;
 	
 	pCpu->Init();
 	
@@ -126,17 +129,17 @@ volatile limine_smp_request g_SMPRequest =
 
 // Initialize the CPUs from the bootloader's perspective.
 
-limine_smp_response* Arch::CPU::GetSMPResponse()
+limine_smp_response* CPU::GetSMPResponse()
 {
 	return g_SMPRequest.response;
 }
 
-uint64_t Arch::CPU::GetCount()
+uint64_t CPU::GetCount()
 {
 	return GetSMPResponse()->cpu_count;
 }
 
-void Arch::CPU::InitAsBSP()
+void CPU::InitAsBSP()
 {
 	limine_smp_response* pSMP = g_SMPRequest.response;
 	
@@ -176,11 +179,44 @@ void Arch::CPU::InitAsBSP()
 	CPU::GetCurrent()->Go();
 }
 
-Arch::CPU* Arch::CPU::GetCPU(uint64_t pid)
+CPU* CPU::GetCPU(uint64_t pid)
 {
 	limine_smp_response* resp = g_SMPRequest.response;
 	
 	if (pid >= resp->cpu_count) return NULL;
 	
 	return (CPU*)(resp->cpus[pid]->extra_argument);
+}
+
+uint64_t GetTickCount_TSC()
+{
+	auto pCpu = CPU::GetCurrent();
+	
+	uint64_t ticksPerMS  = pCpu->GetTSCTicksPerMS();
+	uint64_t startingTSC = pCpu->GetStartingTSC();
+	
+	// we have not gotten past that stage.
+	if (ticksPerMS == 0) return 0;
+	
+	uint64_t timeDiff = TSC::Read() - startingTSC;
+	return timeDiff * 1'000'000 / ticksPerMS;
+}
+
+uint64_t GetTickCount_HPET()
+{
+	return Arch::HPET::GetTickCount();
+}
+
+static GetTickCountMethod g_GetTickCountMethod = GetTickCount_TSC;
+
+void SetGetTickCountMethod(GetTickCountMethod ptr)
+{
+	g_GetTickCountMethod = ptr;
+}
+
+uint64_t GetTickCount()
+{
+	return g_GetTickCountMethod();
+}
+
 }

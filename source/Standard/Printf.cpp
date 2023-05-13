@@ -73,6 +73,9 @@ int vsnprintf(char* buf, size_t sz, const char* fmt, va_list args)
 
 		if (m == '%')
 		{
+			paddingInfo = -1;
+			paddingChar = ' ';
+			
 			m = *(fmt++);
 
 			// if hit end, return
