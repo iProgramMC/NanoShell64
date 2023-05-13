@@ -30,7 +30,7 @@ uint16_t PIT::Read()
 	return data;
 }
 
-void PIT::Sleep(uint64_t ns)
+void PIT::PolledSleep(uint64_t ns)
 {
 	uint64_t periods = ns / C_PIT_PERIOD;
 	

@@ -30,7 +30,7 @@ void *EternalHeap::Allocate(size_t sz)
 	if (gEternalHeapPtr + sz > gEternalHeapEnd)
 	{
 		// OOPS! We failed to allocate this block. Return NULL.
-		SLogMsg("EternalHeap could not fulfill an allocation of %z bytes", sz);
+		SLogMsg("EternalHeap could not fulfill an allocation of %z bytes (RA: %p)", sz, __builtin_return_address(0));
 		return NULL;
 	}
 	

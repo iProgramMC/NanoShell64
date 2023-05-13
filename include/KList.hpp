@@ -36,6 +36,9 @@ class KList
 	
 	class ListNodeIterator
 	{
+		friend ListNode;
+		friend KList;
+		
 		ListNode* m_pNode;
 		
 	public:
@@ -44,12 +47,12 @@ class KList
 			m_pNode = pNode;	
 		}
 		
-		T& operator*()
+		T& operator*() const
 		{
 			return m_pNode->m_data;
 		}
 		
-		bool Valid()
+		bool Valid() const
 		{
 			return m_pNode != nullptr;
 		}
@@ -181,6 +184,14 @@ public:
 		if (pNode->m_pNext)
 			pNode->m_pNext->m_pPrev = pNode->m_pPrev;
 		delete pNode;
+	}
+	
+	void Erase(const ListNodeIterator& iter)
+	{
+		if (!iter.Valid())
+			return;
+		
+		Remove(iter.m_pNode);
 	}
 	
 	void PopBack()

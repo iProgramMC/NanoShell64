@@ -89,6 +89,7 @@ public:
 		SUSPENDED, // The thread has been manually suspended.
 		RUNNING,   // The thread is active.
 		ZOMBIE,    // The thread has completely died. The owner of this thread object now has to clean it up.
+		SLEEPING,  // The thread is sleeping until a moment in time in the future.
 	};
 	
 public:

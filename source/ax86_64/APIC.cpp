@@ -22,6 +22,8 @@
 
 #define IA32_APIC_BASE_MSR (0x1B)
 
+using namespace Arch;
+
 enum
 {
 	APIC_REG_ID            = 0x20,
@@ -66,18 +68,18 @@ enum
 };
 
 // Write a register.
-void Arch::APIC::WriteReg(uint32_t reg, uint32_t value)
+void APIC::WriteReg(uint32_t reg, uint32_t value)
 {
 	WritePhys(GetLapicBasePhys() + reg, value);
 }
 
 // Read a register.
-uint32_t Arch::APIC::ReadReg(uint32_t reg)
+uint32_t APIC::ReadReg(uint32_t reg)
 {
 	return ReadPhys(GetLapicBasePhys() + reg);
 }
 
-uintptr_t Arch::APIC::GetLapicBasePhys()
+uintptr_t APIC::GetLapicBasePhys()
 {
 	// Read the specific MSR.
 	uintptr_t msr = ReadMSR(IA32_APIC_BASE_MSR);
@@ -85,12 +87,12 @@ uintptr_t Arch::APIC::GetLapicBasePhys()
 	return msr & 0x0000'000F'FFFF'F000;
 }
 
-uintptr_t Arch::APIC::GetLapicBase()
+uintptr_t APIC::GetLapicBase()
 {
 	return GetHHDMOffset() + GetLapicBasePhys();
 }
 
-void Arch::APIC::EnsureOn()
+void APIC::EnsureOn()
 {
 	// Use the CPUID instruction.
 	uint32_t eax, edx;
@@ -99,7 +101,7 @@ void Arch::APIC::EnsureOn()
 	if (~edx & (1 << 9))
 	{
 		LogMsg("APIC is off. An APIC must be present before running NanoShell64.");
-		Arch::IdleLoop();
+		IdleLoop();
 	}
 }
 
@@ -121,7 +123,7 @@ extern "C" void Arch_APIC_OnInterrupt()
 	pCpu->UnlockIpiSpinlock();
 }
 
-void Arch::APIC::Init()
+void APIC::Init()
 {
 	if (CPU::AreWeBootstrap())
 	{
@@ -152,7 +154,7 @@ void Arch::APIC::Init()
 	WriteReg(APIC_REG_SPURIOUS, C_SPURIOUS_INTERRUPT_VECTOR | 0x100);
 }
 
-void Arch::CPU::SendIPI(eIpiType type)
+void CPU::SendIPI(eIpiType type)
 {
 	// The destination is 'this'. The sender (us) is 'pSenderCPU'.
 	CPU * pSenderCPU = GetCurrent();
@@ -174,39 +176,51 @@ void Arch::CPU::SendIPI(eIpiType type)
 	// The CPU in question will unlock the IPI spinlock.
 }
 
-uint64_t Arch::APIC::CalibrateTimer()
+PolledSleepFunc g_PolledSleepFunc = PIT::PolledSleep;
+
+void APIC::SetPolledSleepFunc(PolledSleepFunc func)
+{
+	g_PolledSleepFunc = func;
+}
+
+// Despite being in the APIC namespace this also calibrates the TSC. Wow!
+void APIC::CalibrateTimer(uint64_t &apicOut, uint64_t &tscOut)
 {
 	// Tell the APIC timer to use divider 16.
 	APIC::WriteReg(APIC_REG_TMR_DIV_CFG, C_APIC_TIMER_DIVIDE_BY_128);
 	
-	uint64_t avg = 0;
+	uint64_t avg_apic = 0;
+	uint64_t avg_tsc  = 0;
 	
 	constexpr int nRuns = 16;
+	constexpr int nMs   = 10;
 	
 	for (int i = 0; i < nRuns; i++)
-	{		
+	{
+		uint64_t tscStart = TSC::Read();
+		
 		// Set APIC init counter to -1.
 		APIC::WriteReg(APIC_REG_TMR_INIT_CNT, 0xFFFFFFFF);
 		
-		// Sleep for 10 ms
-		PIT::Sleep(10*1000*1000);
+		// Sleep for X ms.
+		// subtract a small amount of time to compensate for the speed difference that also calibrating the TSC adds.
+		g_PolledSleepFunc(nMs*1000*1000 - 50);
 		
 		// Stop the APIC timer.
 		APIC::WriteReg(APIC_REG_LVT_TIMER, APIC_LVT_INT_MASKED);
 		
 		// Read the current count.
-		uint64_t ticksPerMs = 0xFFFFFFFF - APIC::ReadReg(APIC_REG_TMR_CURR_CNT);
-		SLogMsg("CPU %d Run %d: %lld ticks/ms.", CPU::GetCurrent()->ID(), i, ticksPerMs);
+		uint64_t ticksPerMsApic = 0xFFFFFFFF - APIC::ReadReg(APIC_REG_TMR_CURR_CNT);
+		uint64_t ticksPerMsTsc  = TSC::Read() - tscStart;
+		//SLogMsg("CPU %d Run %d: %lld APIC ticks/ms, %lld TSC ticks/ms", CPU::GetCurrent()->ID(), i, ticksPerMsApic, ticksPerMsTsc);
 		
-		avg += ticksPerMs;
+		avg_apic += ticksPerMsApic;
+		avg_tsc  += ticksPerMsTsc;
 	}
 	
-	avg /= nRuns;
-	avg /= 10;
+	avg_apic /= nRuns * nMs;
+	avg_tsc  /= nRuns * nMs;
 	
-	LogMsg("CPU %d has an APIC timer frequency of approximately %lld ticks/ms.", CPU::GetCurrent()->ID(), avg);
-	
-	
-	return avg;
+	apicOut = avg_apic;
+	tscOut  = avg_tsc;
 }
-

@@ -82,7 +82,7 @@ void Arch::CPU::CalibrateTimer()
 	// PIT now.
 	LockGuard lg(g_CalibrateSpinlock);
 	
-	m_LapicTicksPerMS = APIC::CalibrateTimer();
+	APIC::CalibrateTimer(m_LapicTicksPerMS, m_TscTicksPerMS);
 }
 
 void Arch::CPU::Init()
@@ -129,7 +129,7 @@ void Arch::CPU::Init()
 	CalibrateTimer();
 	
 	// The X will be replaced.
-	LogMsg("Hello from processor #%d", m_processorID);
+	LogMsg("Processor #%d has come online.", m_processorID);
 	
 	g_CPUsInitialized.FetchAdd(1);
 	
@@ -145,11 +145,66 @@ void Arch::CPU::Init()
 	}
 }
 
+Atomic<int> g_CPUsReady;
+
 void Arch::CPU::Go()
 {
+	auto* pResponse = GetSMPResponse();
+	
+	int cpuCount = int(pResponse->cpu_count);
+	
 	// TODO: If the bootstrap processor, do some other stuff, like spawn an initial thread
 	if (m_bIsBSP)
 	{
+		// for each CPU, check if the lapic ticks per MS is very close between CPUs
+		
+		int64_t LapicTicksPerMS_Avg = 0;
+		int64_t TscTicksPerMS_Avg   = 0;
+		
+		for (int i = 0; i < cpuCount; i++)
+		{
+			CPU *pCpu = (CPU*)(pResponse->cpus[i]->extra_argument);
+			
+			LapicTicksPerMS_Avg += pCpu->m_LapicTicksPerMS;
+			TscTicksPerMS_Avg   += pCpu->m_TscTicksPerMS;
+		}
+		
+		LapicTicksPerMS_Avg /= cpuCount;
+		TscTicksPerMS_Avg   /= cpuCount;
+		
+		int64_t diffApic = LapicTicksPerMS_Avg - m_LapicTicksPerMS;
+		int64_t diffTsc  = LapicTicksPerMS_Avg - m_LapicTicksPerMS;
+		
+		// if it's within 100 ticks of tolerance...
+		if (diffApic <= 100 && diffApic >= -100)
+		{
+			// just set the rest of the CPUs' LAPIC timer to the average;
+			for (int i = 0; i < cpuCount; i++)
+			{
+				CPU *pCpu = (CPU*)(pResponse->cpus[i]->extra_argument);
+				
+				pCpu->m_LapicTicksPerMS = LapicTicksPerMS_Avg;
+			}
+		}
+		// if it's within 100 ticks of tolerance...
+		if (diffTsc <= 100 && diffTsc >= -100)
+		{
+			// just set the rest of the CPUs' LAPIC timer to the average;
+			for (int i = 0; i < cpuCount; i++)
+			{
+				CPU *pCpu = (CPU*)(pResponse->cpus[i]->extra_argument);
+				
+				pCpu->m_TscTicksPerMS = TscTicksPerMS_Avg;
+			}
+		}
+		
+		for (int i = 0; i < cpuCount; i++)
+		{
+			CPU *pCpu = (CPU*)(pResponse->cpus[i]->extra_argument);
+			
+			LogMsg("CPU %d has APIC tick rate %lld, TSC tick rate %lld", i, pCpu->m_LapicTicksPerMS, pCpu->m_TscTicksPerMS);
+		}
+		
 		LogMsg("I am the bootstrap processor, and I will soon spawn an initial task instead of printing this!");
 		
 		// Since all other processors are running, try sending an IPI to processor 1.
@@ -160,6 +215,13 @@ void Arch::CPU::Go()
 	
 		//KernelPanic("Hello there %d", 1337);
 	}
+	
+	g_CPUsReady.FetchAdd(1);
+	
+	while (g_CPUsReady.Load(ATOMIC_MEMORD_RELAXED) < cpuCount)
+		Spinlock::SpinHint();
+	
+	m_StartingTSC = TSC::Read();
 	
 	Thread::Yield();
 }

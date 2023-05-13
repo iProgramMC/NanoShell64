@@ -155,11 +155,7 @@ namespace Arch
 		void Load();
 	}
 	
-	namespace HPET
-	{
-		// The function that loads the HPET's data from the RSDT entry.
-		void Found(RSD::Table*);
-	}
+	typedef void(*PolledSleepFunc)(uint64_t);
 	
 	namespace APIC
 	{
@@ -181,11 +177,36 @@ namespace Arch
 		// Get the LAPIC's base address. This is offset by the HHDM.
 		uintptr_t GetLapicBase();
 		
-		// Calibrate the APIC timer using the PIT. Used by the CPU.
+		// Calibrate the APIC and TSC timers using the PIT or HPET. Used by the CPU.
 		// Returns the frequency of ticks per millisecond.
 		// This is not thread safe, so be sure to add locking before going in.
-		uint64_t CalibrateTimer();
+		void CalibrateTimer(uint64_t &apicOut, uint64_t &tscOut);
+		
+		// Set the polled sleep function for calibration. By default, it's
+		// the PIT sleep function.
+		void SetPolledSleepFunc(PolledSleepFunc func);
 	};
+	
+	namespace HPET
+	{
+		// Get the raw tick count of the HPET.
+		uint64_t GetRawTickCount();
+		
+		// Get the number of nanoseconds passed since the HPET was initialized.
+		uint64_t GetTickCount();
+		
+		// The function that loads the HPET's data from the RSDT entry and initializes it.
+		void Found(RSD::Table*);
+		
+		// Performs a polling sleep.
+		void PolledSleep(uint64_t nanoseconds);
+	}
+	
+	namespace TSC
+	{
+		// Get the raw tick count of the TSC.
+		uint64_t Read();
+	}
 	
 	// A small driver to allow calibration of the APIC.
 	// Note: Using this on more than 1 CPU WILL lead to problems,
@@ -196,7 +217,7 @@ namespace Arch
 		uint16_t Read();
 		
 		// Performs a polling sleep. Supports about 50 ms max.
-		void Sleep(uint64_t nanoseconds);
+		void PolledSleep(uint64_t nanoseconds);
 	};
 	
 #endif
@@ -251,8 +272,14 @@ namespace Arch
 		// If the interrupts are currently enabled.
 		bool m_InterruptsEnabled = false;
 		
-		// The number of LAPIC timer ticks per millisecond;
+		// The number of LAPIC timer ticks per millisecond.
 		uint64_t m_LapicTicksPerMS = 0;
+		
+		// The number of TSC timer ticks per millisecond.
+		uint64_t m_TscTicksPerMS = 0;
+		
+		// The starting TSC. This is set after Arch::CPU::Go() detects that all CPUs have reached that point.
+		uint64_t m_StartingTSC = 0;
 		
 		// Store other fields here such as current task, etc.
 		
@@ -279,7 +306,7 @@ namespace Arch
 		// Marks the BSP as initialized.
 		void OnBSPInitialized();
 		
-		// Calibrates the LAPIC timer using the PIT.
+		// Calibrates the LAPIC and TSC timers using the PIT or the HPET, if available.
 		void CalibrateTimer();
 #endif
 		/**** Operations that should be run within this CPU's context, but are otherwise public ****/
@@ -414,6 +441,10 @@ namespace Arch
 	// Read a 32-bit integer from any address within physical memory.
 	// This assumes an HHDM is present and the entire physical address space is mapped.
 	uint32_t ReadPhys(uintptr_t ptr);
+	
+	// Get the number of nanoseconds since system boot.
+	// Specifically, since all the CPUs are about to call "Thread::Yield()".
+	uint64_t GetTickCount();
 	
 #endif
 }

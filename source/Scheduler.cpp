@@ -10,6 +10,8 @@
 #include <Arch.hpp>
 #include <EternalHeap.hpp>
 
+static Atomic<int> g_NextThreadID(1);
+
 void Scheduler::IdleThread()
 {
 	while (true)
@@ -33,17 +35,14 @@ void Scheduler::Idle2Thread()
 
 Thread* Scheduler::CreateThread()
 {
-	// no threads to dish out, I'm afraid
-	if (m_ThreadFreeList.Empty())
-		return nullptr;
+	Thread* pThrd = new(nopanic) Thread;
 	
-	Thread* pThread = m_ThreadFreeList.Front();
-	m_ThreadFreeList.PopFront();
+	pThrd->m_pScheduler = this;
+	pThrd->m_ID  = g_NextThreadID.FetchAdd(1);
 	
-	// Initialize it with a placement new.
-	new (pThread) Thread;
+	m_AllThreads.AddBack(pThrd);
 	
-	return pThread;
+	return pThrd;
 }
 
 Thread* Scheduler::GetCurrentThread()
@@ -53,17 +52,6 @@ Thread* Scheduler::GetCurrentThread()
 
 void Scheduler::Init()
 {
-	m_pThreadArray = (Thread*) EternalHeap::Allocate(MIN_THREADS * sizeof(Thread));
-	
-	for (size_t i = 0; i < MIN_THREADS; i++)
-	{
-		// call placement new on the thread to initialize it
-		m_ThreadFreeList.AddBack(new(&m_pThreadArray[i]) Thread);
-		
-		m_pThreadArray[i].m_ID = int(i);
-		m_pThreadArray[i].m_pScheduler = this;
-	}
-	
 	// create an idle thread now
 	Thread* pIdle = CreateThread();
 	Thread* pIdle2 = CreateThread();
@@ -130,7 +118,13 @@ Thread* Scheduler::PopNextThread()
 // Note: This could be a performance concern.
 void Scheduler::CheckUnsuspensionConditions()
 {
-	// .....
+	// TODO
+}
+
+// looks through the list of zombie threads and kills them.
+void Scheduler::CheckZombieThreads()
+{
+	// TODO
 }
 
 // this is only to be called from Thread::Yield!!!
@@ -139,6 +133,8 @@ void Scheduler::Schedule()
 	m_pCurrentThread = nullptr;
 	
 	CheckUnsuspensionConditions();
+	
+	CheckZombieThreads();
 	
 	Thread* pThread = PopNextThread();
 	
@@ -155,12 +151,14 @@ void Scheduler::Schedule()
 	m_pCurrentThread->JumpExecContext();
 }
 
-
-
-
-
-
-
-
-
-
+void Scheduler::DeleteThread(Thread* pThread)
+{
+	for (auto it = m_AllThreads.Begin(); it.Valid(); ++it)
+	{
+		if (*it != pThread) continue;
+		
+		m_AllThreads.Erase(it);
+		
+		return;
+	}
+}

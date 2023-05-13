@@ -79,7 +79,7 @@ namespace PMM
 namespace VMM
 {
 	constexpr uintptr_t C_KERNEL_HEAP_START = 0xFFFFA00000000000;
-	constexpr uintptr_t C_KERNEL_HEAP_SIZE  = 0x800000; // 8 MB
+	constexpr uintptr_t C_KERNEL_HEAP_SIZE  = 0x1600000; // 16 MB
 	
 	constexpr uintptr_t C_HPET_MAP_ADDRESS  = 0xFFFFFFFE00000000;
 	

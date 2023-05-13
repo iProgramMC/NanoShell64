@@ -34,7 +34,8 @@ extern "C" void KernelPanic(const char* fmt, ...)
 	vsnprintf(panic_formatted, sizeof panic_formatted, fmt, lst);
 	
 	// log the panic to the console, in case the code to force panic the other CPUs fails to send the IPIs for some reason
-	SLogMsg("CPU %d - PANIC: %s (RA:%p)", pThisCpu->ID(), panic_formatted, __builtin_return_address(0));
+	LogMsg("CPU %d - PANIC: %s (RA:%p).....", pThisCpu->ID(), panic_formatted, __builtin_return_address(0));
+	SLogMsg("CPU %d - PANIC: %s (RA:%p).....", pThisCpu->ID(), panic_formatted, __builtin_return_address(0));
 	
 	// if the panic lock is already locked
 	if (!g_PanicLock.TryLock())

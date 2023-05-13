@@ -34,27 +34,9 @@ struct Thread_ExecQueueComparator
 
 class Scheduler
 {
-	static constexpr int MIN_THREADS = 4096;
-	
-	// A limited set of thread objects. This cannot be expanded, sadly. TODO
-	Thread* m_pThreadArray = nullptr;
-	
-	KList<Thread*> m_ThreadFreeList;
-	/*
-	KList<Thread*> m_RTExecutionQueue;   // The execution queue for realtime threads.
-	KList<Thread*> m_ExecutionQueue;     // The execution queue for normal threads.
-	KList<Thread*> m_IdleExecutionQueue; // The execution queue for idle threads.
-	*/
-	
-	KPriorityQueue<Thread*, Thread_ExecQueueComparator> m_ExecutionQueue;
-	
-	KList<Thread*> m_SuspendedThreads;
-	KList<Thread*> m_ZombieThreads;      // Threads to clean up and dispose.
-	
-	Thread *m_pCurrentThread = nullptr;
-	
-	static void IdleThread();
-	static void Idle2Thread();
+public:
+	// Creates a new thread object.
+	Thread* CreateThread();
 	
 protected:
 	friend class Arch::CPU;
@@ -75,12 +57,29 @@ protected:
 	// For each suspended thread, check if it's suspended anymore.
 	void CheckUnsuspensionConditions();
 	
+	// Kill every zombie thread that isn't owned by anybody.
+	void CheckZombieThreads();
+	
 	// Schedules in a new thread. This is used within Thread::Yield(), so use that instead.
 	void Schedule();
 	
-public:
-	// Creates a new thread object.
-	Thread* CreateThread();
+private:
+	// A list of ALL threads ever.
+	KList<Thread*> m_AllThreads;
+	
+	KList<Thread*> m_ThreadFreeList;
+	
+	KPriorityQueue<Thread*, Thread_ExecQueueComparator> m_ExecutionQueue;
+	
+	KList<Thread*> m_SuspendedThreads;
+	KList<Thread*> m_ZombieThreads;      // Threads to clean up and dispose.
+	
+	Thread *m_pCurrentThread = nullptr;
+	
+	static void IdleThread();
+	static void Idle2Thread();
+	
+	void DeleteThread(Thread* pThread);
 };
 
 #endif//_SCHEDULER_HPP
