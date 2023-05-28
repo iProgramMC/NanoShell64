@@ -17,6 +17,7 @@
 
 #define C_SPURIOUS_INTERRUPT_VECTOR (0xFF)
 #define C_APIC_TIMER_DIVIDE_BY_128  (0b1010) // Intel SDM Vol.3A Ch.11 "11.5.4 APIC Timer". Bit 2 is reserved.
+#define C_APIC_TIMER_DIVIDE_BY_16   (0b0011) // Intel SDM Vol.3A Ch.11 "11.5.4 APIC Timer". Bit 2 is reserved.
 
 #define APIC_LVT_INT_MASKED (0x10000)
 
@@ -187,13 +188,13 @@ void APIC::SetPolledSleepFunc(PolledSleepFunc func)
 void APIC::CalibrateTimer(uint64_t &apicOut, uint64_t &tscOut)
 {
 	// Tell the APIC timer to use divider 16.
-	APIC::WriteReg(APIC_REG_TMR_DIV_CFG, C_APIC_TIMER_DIVIDE_BY_128);
+	APIC::WriteReg(APIC_REG_TMR_DIV_CFG, C_APIC_TIMER_DIVIDE_BY_16);
 	
 	uint64_t avg_apic = 0;
 	uint64_t avg_tsc  = 0;
 	
-	constexpr int nRuns = 16;
-	constexpr int nMs   = 10;
+	constexpr int nRuns = 4;
+	constexpr int nMs   = 20;
 	
 	for (int i = 0; i < nRuns; i++)
 	{
@@ -204,14 +205,15 @@ void APIC::CalibrateTimer(uint64_t &apicOut, uint64_t &tscOut)
 		
 		// Sleep for X ms.
 		// subtract a small amount of time to compensate for the speed difference that also calibrating the TSC adds.
-		g_PolledSleepFunc(nMs*1000*1000 - 50);
+		g_PolledSleepFunc(nMs*1000*1000);
+		
+		uint64_t ticksPerMsTsc  = TSC::Read() - tscStart;
 		
 		// Stop the APIC timer.
 		APIC::WriteReg(APIC_REG_LVT_TIMER, APIC_LVT_INT_MASKED);
 		
 		// Read the current count.
 		uint64_t ticksPerMsApic = 0xFFFFFFFF - APIC::ReadReg(APIC_REG_TMR_CURR_CNT);
-		uint64_t ticksPerMsTsc  = TSC::Read() - tscStart;
 		//SLogMsg("CPU %d Run %d: %lld APIC ticks/ms, %lld TSC ticks/ms", CPU::GetCurrent()->ID(), i, ticksPerMsApic, ticksPerMsTsc);
 		
 		avg_apic += ticksPerMsApic;

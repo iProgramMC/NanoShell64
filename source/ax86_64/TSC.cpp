@@ -20,7 +20,7 @@ uint64_t TSC::Read()
 	uint64_t low, high;
 	
 	// note: The rdtsc instruction is specified to zero out the top 32 bits of rax and rdx.
-	asm("lfence; rdtsc":"=a"(low), "=d"(high));
+	asm("rdtsc":"=a"(low), "=d"(high));
 	
 	// So something like this is fine.
 	return high << 32 | low;

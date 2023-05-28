@@ -108,7 +108,7 @@ private:
 			}
 			else break;
 			
-			if (me[index] < me[swapIdx])
+			if (comp(me[swapIdx], me[index])) // should change this to !comp I guess?
 			{
 				T temp = me[swapIdx];
 				me[swapIdx] = me[index];

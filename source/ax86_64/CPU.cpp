@@ -157,7 +157,6 @@ void Arch::CPU::Go()
 	if (m_bIsBSP)
 	{
 		// for each CPU, check if the lapic ticks per MS is very close between CPUs
-		
 		int64_t LapicTicksPerMS_Avg = 0;
 		int64_t TscTicksPerMS_Avg   = 0;
 		

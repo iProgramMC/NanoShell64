@@ -24,19 +24,33 @@ void Scheduler::IdleThread()
 }
 void Scheduler::Idle2Thread()
 {
+	uint64_t lastTC1 = 0, lastTC2 = 0;
+	
+	int iter = 0;
+	unsigned id = Arch::CPU::GetCurrent()->ID();
+	
+	LogMsg("Normal thread on CPU %u.", id);
+	
+	if (id == 0)
+		LogMsg("Note: Measurements are all in microseconds.");
+	
 	while (true)
 	{
 		uint64_t tc  = Arch::GetTickCount() / 1000;
 		uint64_t tc2 = Arch::HPET::GetTickCount() / 1000;
-		unsigned id  = Arch::CPU::GetCurrent()->ID();
 		
 		if (id == 0)
 		{
-			LogMsg("[%3lld.%06lld] [%3lld.%06lld] Normal thread from CPU %u", tc/1000000, tc%1000000, tc2/1000000, tc2%1000000, id);
+			LogMsgNoCR("\rCPU %u Iter %5d [%3lld.%06lld] [%3lld.%06lld] [now_diff: %lld] [tc2-ltc2: %lld] [tc1-ltc1: %lld], [diffdiff: %lld]",
+			       id, iter, tc/1000000, tc%1000000, tc2/1000000, tc2%1000000, tc2 - tc, tc2-lastTC2, tc-lastTC1, (tc2-lastTC2) - (tc-lastTC1));
 			Arch::HPET::PolledSleep(500*1000*1000);
 		}
 		else
 			Arch::Halt();
+		
+		lastTC1 = tc;
+		lastTC2 = tc2;
+		iter++;
 	}
 }
 
