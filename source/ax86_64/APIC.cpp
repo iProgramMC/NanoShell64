@@ -18,6 +18,9 @@
 #define C_SPURIOUS_INTERRUPT_VECTOR (0xFF)
 #define C_APIC_TIMER_DIVIDE_BY_128  (0b1010) // Intel SDM Vol.3A Ch.11 "11.5.4 APIC Timer". Bit 2 is reserved.
 #define C_APIC_TIMER_DIVIDE_BY_16   (0b0011) // Intel SDM Vol.3A Ch.11 "11.5.4 APIC Timer". Bit 2 is reserved.
+#define C_APIC_TIMER_MODE_ONESHOT   (0b00 << 17)
+#define C_APIC_TIMER_MODE_PERIODIC  (0b01 << 17) // not used right now, but may be needed.
+#define C_APIC_TIMER_MODE_TSCDEADLN (0b10 << 17)
 
 #define APIC_LVT_INT_MASKED (0x10000)
 
@@ -83,9 +86,11 @@ uint32_t APIC::ReadReg(uint32_t reg)
 uintptr_t APIC::GetLapicBasePhys()
 {
 	// Read the specific MSR.
-	uintptr_t msr = ReadMSR(IA32_APIC_BASE_MSR);
+	/*uintptr_t msr = ReadMSR(IA32_APIC_BASE_MSR);
 	
 	return msr & 0x0000'000F'FFFF'F000;
+	*/
+	return 0xFEE0'0000; // really I think it's fine if we hardcode it
 }
 
 uintptr_t APIC::GetLapicBase()
@@ -106,8 +111,17 @@ void APIC::EnsureOn()
 	}
 }
 
-extern "C" void Arch_APIC_OnInterrupt_Asm();
-extern "C" void Arch_APIC_OnInterrupt()
+extern "C" void Arch_APIC_OnSpInterrupt_Asm();
+extern "C" void Arch_APIC_OnSpInterrupt()
+{
+	// Send an EOI.
+	APIC::WriteReg(APIC_REG_EOI, 0);
+	
+	SLogMsg("Spurious!");
+}
+
+extern "C" void Arch_APIC_OnIPInterrupt_Asm();
+extern "C" void Arch_APIC_OnIPInterrupt()
 {
 	using namespace Arch;
 	
@@ -117,11 +131,26 @@ extern "C" void Arch_APIC_OnInterrupt()
 	// Tell it that we've IPI'd.
 	pCpu->OnIPI();
 	
-	// Make sure an EOI is sent.
+	// Send an EOI.
 	APIC::WriteReg(APIC_REG_EOI, 0);
 	
 	// since a CPU::SendIPI() call was needed to reach this point, unlock the IPI spinlock.
 	pCpu->UnlockIpiSpinlock();
+}
+
+extern "C" void Arch_APIC_OnTimerInterrupt_Asm();
+extern "C" void Arch_APIC_OnTimerInterrupt()
+{
+	using namespace Arch;
+	
+	// Get the current CPU.
+	CPU* pCpu = CPU::GetCurrent();
+	
+	// Tell it that we've IPI'd.
+	pCpu->OnTimerIRQ();
+	
+	// Send an EOI.
+	APIC::WriteReg(APIC_REG_EOI, 0);
 }
 
 void APIC::Init()
@@ -149,10 +178,10 @@ void APIC::Init()
 	}
 	
 	// Set this CPU's IDT entry.
-	CPU::GetCurrent()->SetInterruptGate(C_SPURIOUS_INTERRUPT_VECTOR, uintptr_t(Arch_APIC_OnInterrupt_Asm));
+	CPU::GetCurrent()->SetInterruptGate(IDT::INT_SPURIOUS, uintptr_t(Arch_APIC_OnSpInterrupt_Asm));
 	
 	// Enable the spurious vector interrupt.
-	WriteReg(APIC_REG_SPURIOUS, C_SPURIOUS_INTERRUPT_VECTOR | 0x100);
+	WriteReg(APIC_REG_SPURIOUS, IDT::INT_SPURIOUS | 0x100);
 }
 
 void CPU::SendIPI(eIpiType type)
@@ -278,4 +307,34 @@ void APIC::CalibrateTimer(uint64_t &apicOut, uint64_t &tscOut)
 	
 	apicOut = avg_apic;
 	tscOut  = avg_tsc;
+}
+
+void APIC::ScheduleInterruptIn(uint64_t nanoseconds)
+{
+	uint64_t lvtTimerReg = 0;
+	
+	// bit 16: masked. That'll be 0
+	
+	// first 8 bits are the interrupt vector:
+	lvtTimerReg |= IDT::INT_APIC_TIMER;
+	
+	// This is redundant since the oneshot mode's value is 0, but hey, this is for clarity
+	lvtTimerReg |= C_APIC_TIMER_MODE_ONESHOT;
+	
+	CPU* pCpu = CPU::GetCurrent();
+	
+	bool bState = pCpu->SetInterruptsEnabled(false);
+	
+	// get the new timer value:
+	uint64_t timerVal = pCpu->GetLapicTicksPerMS() * nanoseconds / C_MILLIS_TO_NANOS;
+	
+	SLogMsg("[CPU %d] TimerVal: %lld", pCpu->ID(), timerVal);
+	
+	// set the count:
+	APIC::WriteReg(APIC_REG_TMR_INIT_CNT, timerVal);
+	APIC::WriteReg(APIC_REG_LVT_TIMER, lvtTimerReg);
+	
+	// and off it goes !
+	
+	pCpu->SetInterruptsEnabled(bState);
 }

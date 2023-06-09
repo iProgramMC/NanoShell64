@@ -15,8 +15,12 @@
 
 bits 64
 
-global Arch_APIC_OnInterrupt_Asm
-extern Arch_APIC_OnInterrupt
+global Arch_APIC_OnTimerInterrupt_Asm
+extern Arch_APIC_OnTimerInterrupt
+global Arch_APIC_OnIPInterrupt_Asm
+extern Arch_APIC_OnIPInterrupt
+global Arch_APIC_OnSpInterrupt_Asm
+extern Arch_APIC_OnSpInterrupt
 
 global CPU_OnPageFault_Asm
 extern CPU_OnPageFault
@@ -111,12 +115,36 @@ CPU_OnPageFault_Asm:
 	iretq
 
 ; Implements the assembly stub which calls into the C function, which then calls into the C++ function.
-Arch_APIC_OnInterrupt_Asm:
+Arch_APIC_OnIPInterrupt_Asm:
 	PUSH_ALL_NO_ERC
 	SWAP_GS_IF_NEEDED
 	
 	mov  rdi, rsp
-	call Arch_APIC_OnInterrupt
+	call Arch_APIC_OnIPInterrupt
+	
+	SWAP_GS_BACK_IF_NEEDED
+	POP_ALL
+	iretq
+
+; Implements the assembly stub which calls into the C function, which then calls into the C++ function.
+Arch_APIC_OnTimerInterrupt_Asm:
+	PUSH_ALL_NO_ERC
+	SWAP_GS_IF_NEEDED
+	
+	mov  rdi, rsp
+	call Arch_APIC_OnTimerInterrupt
+	
+	SWAP_GS_BACK_IF_NEEDED
+	POP_ALL
+	iretq
+	
+; it's probably fine if we get a spurious interrupt. We don't really need to handle it
+Arch_APIC_OnSpInterrupt_Asm:
+	PUSH_ALL_NO_ERC
+	SWAP_GS_IF_NEEDED
+	
+	mov  rdi, rsp
+	call Arch_APIC_OnSpInterrupt
 	
 	SWAP_GS_BACK_IF_NEEDED
 	POP_ALL

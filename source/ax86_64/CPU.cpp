@@ -21,7 +21,8 @@ extern Atomic<int> g_CPUsInitialized; // Arch.cpp
 Spinlock g_CalibrateSpinlock;
 
 extern "C" void CPU_OnPageFault_Asm();
-extern "C" void Arch_APIC_OnInterrupt_Asm();
+extern "C" void Arch_APIC_OnIPInterrupt_Asm();
+extern "C" void Arch_APIC_OnTimerInterrupt_Asm();
 extern "C" void CPU_OnPageFault(Registers* pRegs)
 {
 	Arch::CPU::GetCurrent()->OnPageFault(pRegs);
@@ -34,7 +35,9 @@ void Arch::CPU::SetupGDTAndIDT()
 	
 	// Setup the IDT....
 	SetInterruptGate(IDT::INT_PAGE_FAULT, uintptr_t(CPU_OnPageFault_Asm));
-	SetInterruptGate(IDT::INT_IPI,        uintptr_t(Arch_APIC_OnInterrupt_Asm));
+	SetInterruptGate(IDT::INT_IPI,        uintptr_t(Arch_APIC_OnIPInterrupt_Asm));
+	SetInterruptGate(IDT::INT_APIC_TIMER, uintptr_t(Arch_APIC_OnTimerInterrupt_Asm));
+	SetInterruptGate(0, uintptr_t(Arch_APIC_OnTimerInterrupt_Asm));
 	
 	// Load the IDT.
 	LoadIDT();
@@ -58,6 +61,7 @@ bool Arch::CPU::SetInterruptsEnabled(bool b)
 	if (GetCurrent() != this)
 	{
 		SLogMsg("Error: Arch::CPU::SetInterruptsEnabled can only be called on the same CPU it's modifying");
+		return false;
 	}
 	
 	bool x = m_InterruptsEnabled;
@@ -138,6 +142,10 @@ void Arch::CPU::Init()
 	
 	// Initialize our scheduler.
 	m_Scheduler.Init();
+	
+	// Schedule an APIC timer interrupt.
+	SLogMsg("[CPU %d] Scheduling timer IRQ at %lld", ID(), Arch::GetTickCount());
+	APIC::ScheduleInterruptIn(1ULL*1000*1000*1000); // 1 second in nanoseconds
 	
 	if (bIsBSP)
 	{	
@@ -234,6 +242,12 @@ Arch::CPU* Arch::CPU::GetCurrent()
 void Arch::CPU::SetInterruptGate(uint8_t intNum, uintptr_t fnHandler, uint8_t ist, uint8_t dpl)
 {
 	m_idt.SetEntry(intNum, IDT::Entry(fnHandler, ist, dpl));
+}
+
+void Arch::CPU::OnTimerIRQ()
+{
+	LogMsg("[CPU %d] Got timer IRQ at %lld", ID(), Arch::GetTickCount());
+	SLogMsg("[CPU %d] Got timer IRQ at %lld", ID(), Arch::GetTickCount());
 }
 
 Atomic<int> g_panickedCpus { 0 };

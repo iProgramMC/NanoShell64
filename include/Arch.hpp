@@ -62,6 +62,8 @@ namespace Arch
 		{
 			INT_PAGE_FAULT = 0x0E,
 			INT_IPI        = 0xF0,
+			INT_APIC_TIMER = 0xF1,
+			INT_SPURIOUS   = 0xFF,
 		};
 		
 		struct Entry
@@ -176,6 +178,10 @@ namespace Arch
 		
 		// Get the LAPIC's base address. This is offset by the HHDM.
 		uintptr_t GetLapicBase();
+		
+		// Schedule a one-shot interrupt in X nanoseconds. Make sure you use this carefully,
+		// as you may inhibit an interrupt that's coming in already.
+		void ScheduleInterruptIn(uint64_t nanoseconds);
 		
 		// Calibrate the APIC and TSC timers using the PIT or HPET. Used by the CPU.
 		// Returns the frequency of ticks per millisecond.
@@ -344,6 +350,9 @@ namespace Arch
 		
 		// The function called when an IPI was received.
 		void OnIPI();
+		
+		// The function called when a timer interrupt was received.
+		void OnTimerIRQ();
 		
 		// The function called when we're inside of a page fault.
 		void OnPageFault(Registers* pRegs);

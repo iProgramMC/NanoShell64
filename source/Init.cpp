@@ -47,6 +47,7 @@ extern "C" void _start(void)
 	Terminal::Setup();
 	
 	LogMsg("NanoShell64 (TM), April 2023 - V0.004");
+	SLogMsg("NanoShell64 says good morning");
 	
 	PMM::Init();
 	
