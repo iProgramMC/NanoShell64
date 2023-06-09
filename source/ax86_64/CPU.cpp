@@ -175,7 +175,7 @@ void Arch::CPU::Go()
 		int64_t diffTsc  = LapicTicksPerMS_Avg - m_LapicTicksPerMS;
 		
 		// if it's within 100 ticks of tolerance...
-		if (diffApic <= 100 && diffApic >= -100)
+		if (diffApic <= 1000 && diffApic >= -1000)
 		{
 			// just set the rest of the CPUs' LAPIC timer to the average;
 			for (int i = 0; i < cpuCount; i++)
@@ -186,7 +186,7 @@ void Arch::CPU::Go()
 			}
 		}
 		// if it's within 100 ticks of tolerance...
-		if (diffTsc <= 100 && diffTsc >= -100)
+		if (diffTsc <= 1000 && diffTsc >= -1000)
 		{
 			// just set the rest of the CPUs' LAPIC timer to the average;
 			for (int i = 0; i < cpuCount; i++)

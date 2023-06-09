@@ -107,6 +107,11 @@ uint64_t HPET::GetRawTickCount()
 	return g_pHpetRegisters->m_CounterValue;
 }
 
+uint64_t HPET::GetCounterClockPeriod()
+{
+	return g_HpetGeneralCaps.m_CounterClockPeriod;
+}
+
 uint64_t HPET::GetTickCount()
 {
 	// note: constant divide should be optimized to a fixed point multiply combo

@@ -184,16 +184,69 @@ void APIC::SetPolledSleepFunc(PolledSleepFunc func)
 	g_PolledSleepFunc = func;
 }
 
+constexpr uint64_t C_FEMTOS_TO_NANOS = 1'000'000;
+constexpr uint64_t C_MILLIS_TO_NANOS = 1'000'000;
+
+void APIC::CalibrateHPET(uint64_t &apicOut, uint64_t &tscOut)
+{
+	uint64_t avg_apic = 0;
+	uint64_t avg_tsc  = 0;
+	constexpr int nRuns = 16;
+	constexpr int nMs   = 20;
+	
+	for (int i = 0; i < nRuns; i++)
+	{
+		// Set APIC init counter to -1.
+		APIC::WriteReg(APIC_REG_TMR_INIT_CNT, 0xFFFFFFFF);
+		
+		// Sleep for X ms.
+		uint64_t time = nMs * C_MILLIS_TO_NANOS * C_FEMTOS_TO_NANOS / HPET::GetCounterClockPeriod();
+		
+		uint64_t tscThen  = TSC::Read();
+		uint64_t hpetThen = HPET::GetRawTickCount();
+		uint64_t target   = hpetThen + time;
+		
+		while (HPET::GetRawTickCount() < target)
+			Spinlock::SpinHint();
+		
+		APIC::WriteReg(APIC_REG_LVT_TIMER, APIC_LVT_INT_MASKED);
+		uint64_t tscNow   = TSC::Read();
+		uint64_t hpetNow  = HPET::GetRawTickCount();
+		uint64_t apicDiff = 0xFFFFFFFF - APIC::ReadReg(APIC_REG_TMR_CURR_CNT);
+		
+		uint64_t tscDiff  = tscNow - tscThen;
+		uint64_t hpetDiff = hpetNow - hpetThen;
+		
+		// rescale the TSC and APIC diffs by the HPET diff
+		tscDiff  = tscDiff  * time / hpetDiff;
+		apicDiff = apicDiff * time / hpetDiff;
+		
+		avg_apic += apicDiff;
+		avg_tsc  += tscDiff;
+	}
+	
+	avg_apic /= nRuns * nMs;
+	avg_tsc  /= nRuns * nMs;
+	
+	apicOut = avg_apic;
+	tscOut  = avg_tsc;
+}
+
 // Despite being in the APIC namespace this also calibrates the TSC. Wow!
 void APIC::CalibrateTimer(uint64_t &apicOut, uint64_t &tscOut)
 {
 	// Tell the APIC timer to use divider 16.
 	APIC::WriteReg(APIC_REG_TMR_DIV_CFG, C_APIC_TIMER_DIVIDE_BY_16);
 	
+	if (g_PolledSleepFunc == HPET::PolledSleep)
+	{
+		return APIC::CalibrateHPET(apicOut, tscOut);
+	}
+	
 	uint64_t avg_apic = 0;
 	uint64_t avg_tsc  = 0;
 	
-	constexpr int nRuns = 4;
+	constexpr int nRuns = 16;
 	constexpr int nMs   = 20;
 	
 	for (int i = 0; i < nRuns; i++)

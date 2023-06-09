@@ -185,6 +185,9 @@ namespace Arch
 		// Set the polled sleep function for calibration. By default, it's
 		// the PIT sleep function.
 		void SetPolledSleepFunc(PolledSleepFunc func);
+		
+		// Don't use directly.
+		void CalibrateHPET(uint64_t &apicOut, uint64_t &tscOut);
 	};
 	
 	namespace HPET
@@ -200,6 +203,9 @@ namespace Arch
 		
 		// Performs a polling sleep.
 		void PolledSleep(uint64_t nanoseconds);
+		
+		// Get the counter clock period (amount of femtoseconds per tick)
+		uint64_t GetCounterClockPeriod();
 	}
 	
 	namespace TSC
