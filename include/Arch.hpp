@@ -18,8 +18,7 @@
 namespace Arch
 {
 #ifdef TARGET_X86_64
-	
-	#define C_IDT_ENTRIES
+	constexpr uint64_t C_RFLAGS_INTERRUPT_FLAG = 0x200;
 	
 	struct TSS
 	{
@@ -346,6 +345,11 @@ namespace Arch
 		void UnlockIpiSpinlock()
 		{
 			m_ipiSpinlock.Unlock();
+		}
+		
+		bool& InterruptsEnabledRaw()
+		{
+			return m_InterruptsEnabled;
 		}
 		
 		// The function called when an IPI was received.

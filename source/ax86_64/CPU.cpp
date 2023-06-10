@@ -37,7 +37,7 @@ void Arch::CPU::SetupGDTAndIDT()
 	SetInterruptGate(IDT::INT_PAGE_FAULT, uintptr_t(CPU_OnPageFault_Asm));
 	SetInterruptGate(IDT::INT_IPI,        uintptr_t(Arch_APIC_OnIPInterrupt_Asm));
 	SetInterruptGate(IDT::INT_APIC_TIMER, uintptr_t(Arch_APIC_OnTimerInterrupt_Asm));
-	SetInterruptGate(0, uintptr_t(Arch_APIC_OnTimerInterrupt_Asm));
+	//SetInterruptGate(0, uintptr_t(Arch_APIC_OnTimerInterrupt_Asm));
 	
 	// Load the IDT.
 	LoadIDT();
@@ -66,15 +66,12 @@ bool Arch::CPU::SetInterruptsEnabled(bool b)
 	
 	bool x = m_InterruptsEnabled;
 	
-	if (m_InterruptsEnabled != b)
-	{
-		m_InterruptsEnabled = b;
-		
-		if (b)
-			ASM("sti":::"memory");
-		else
-			ASM("cli":::"memory");
-	}
+	m_InterruptsEnabled = b;
+	
+	if (b)
+		ASM("sti":::"memory");
+	else
+		ASM("cli":::"memory");
 	
 	return x;
 }

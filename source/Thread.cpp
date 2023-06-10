@@ -107,7 +107,8 @@ void Thread::Resume()
 
 void Thread::Start()
 {
-	auto pCpu = Arch::CPU::GetCurrent();
+	using namespace Arch;
+	auto pCpu = CPU::GetCurrent();
 	
 	// This function starts the thread.
 	
@@ -128,10 +129,13 @@ void Thread::Start()
 	// Set the execution context as 'here', to copy the rflags over.
 	SetThreadEC(&m_ExecContext);
 	
+	// force the rflags to have interrupts enabled:
+	m_ExecContext.rflags |= C_RFLAGS_INTERRUPT_FLAG;
+	
 	m_ExecContext.rip = (uint64_t)Thread::Beginning;
 	m_ExecContext.rsp = (uint64_t)&m_pStack[nStackSizeLongs - 2];
-	m_ExecContext.cs  = Arch::GDT::DESC_64BIT_RING0_CODE;
-	m_ExecContext.ss  = Arch::GDT::DESC_64BIT_RING0_DATA;
+	m_ExecContext.cs  = GDT::DESC_64BIT_RING0_CODE;
+	m_ExecContext.ss  = GDT::DESC_64BIT_RING0_DATA;
 	
 	m_Status.Store(RUNNING);
 	
@@ -172,5 +176,9 @@ void Thread::Yield()
 
 void Thread::JumpExecContext()
 {
+	using namespace Arch;
+	CPU* pCpu = CPU::GetCurrent();
+	
+	pCpu->InterruptsEnabledRaw() = (m_ExecContext.rflags & C_RFLAGS_INTERRUPT_FLAG);	
 	JumpThreadEC(&m_ExecContext, 1);
 }
