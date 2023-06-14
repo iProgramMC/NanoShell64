@@ -140,10 +140,6 @@ void Arch::CPU::Init()
 	// Initialize our scheduler.
 	m_Scheduler.Init();
 	
-	// Schedule an APIC timer interrupt.
-	SLogMsg("[CPU %d] Scheduling timer IRQ at %lld", ID(), Arch::GetTickCount());
-	APIC::ScheduleInterruptIn(1ULL*1000*1000*1000); // 1 second in nanoseconds
-	
 	if (bIsBSP)
 	{	
 		OnBSPInitialized();
@@ -241,10 +237,9 @@ void Arch::CPU::SetInterruptGate(uint8_t intNum, uintptr_t fnHandler, uint8_t is
 	m_idt.SetEntry(intNum, IDT::Entry(fnHandler, ist, dpl));
 }
 
-void Arch::CPU::OnTimerIRQ()
+void Arch::CPU::OnTimerIRQ(Registers* pRegs)
 {
-	LogMsg("[CPU %d] Got timer IRQ at %lld", ID(), Arch::GetTickCount());
-	SLogMsg("[CPU %d] Got timer IRQ at %lld", ID(), Arch::GetTickCount());
+	m_Scheduler.OnTimerIRQ(pRegs);
 }
 
 Atomic<int> g_panickedCpus { 0 };

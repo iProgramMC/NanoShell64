@@ -34,6 +34,9 @@ struct Thread_ExecQueueComparator
 
 class Scheduler
 {
+	// Maximum time slice for a thread.
+	constexpr static uint64_t C_THREAD_MAX_TIME_SLICE = 1'000'000;
+	
 public:
 	// Creates a new thread object.
 	Thread* CreateThread();
@@ -63,6 +66,9 @@ protected:
 	// Schedules in a new thread. This is used within Thread::Yield(), so use that instead.
 	void Schedule();
 	
+	// The function run when an interrupt comes in.
+	void OnTimerIRQ(Registers* pRegs);
+	
 private:
 	// A list of ALL threads ever.
 	KList<Thread*> m_AllThreads;
@@ -80,6 +86,9 @@ private:
 	static void Idle2Thread();
 	
 	void DeleteThread(Thread* pThread);
+	
+	// Looks for the next event that will happen, such as a thread wake up.
+	uint64_t NextEvent();
 };
 
 #endif//_SCHEDULER_HPP

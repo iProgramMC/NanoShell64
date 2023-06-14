@@ -178,8 +178,8 @@ namespace Arch
 		// Get the LAPIC's base address. This is offset by the HHDM.
 		uintptr_t GetLapicBase();
 		
-		// Schedule a one-shot interrupt in X nanoseconds. Make sure you use this carefully,
-		// as you may inhibit an interrupt that's coming in already.
+		// Schedule a one-shot interrupt in X nanoseconds.
+		// To avoid race conditions, only the scheduler may use this.
 		void ScheduleInterruptIn(uint64_t nanoseconds);
 		
 		// Calibrate the APIC and TSC timers using the PIT or HPET. Used by the CPU.
@@ -356,7 +356,7 @@ namespace Arch
 		void OnIPI();
 		
 		// The function called when a timer interrupt was received.
-		void OnTimerIRQ();
+		void OnTimerIRQ(Registers* pRegs);
 		
 		// The function called when we're inside of a page fault.
 		void OnPageFault(Registers* pRegs);

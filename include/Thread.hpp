@@ -75,6 +75,13 @@ public:
 		uint64_t rip, cs, rflags, rsp, ss; // popped by iretq. Allows for an easy return to normal
 	};
 	
+	// Additional registers that must be restored as well.
+	struct ThreadAdditionalRegisters
+	{
+		uint64_t rax, rcx, rdx, rsi, rdi, r8, r9, r10, r11;
+		uint64_t ds, es, fs, gs;
+	};
+	
 	enum ePriority
 	{
 		IDLE,       // Idle priority. This thread will only be run when no other threads can be scheduled.
@@ -165,6 +172,16 @@ protected:
 	// The stack of this thread.
 	uint64_t* m_pStack;
 	size_t    m_StackSize = 32768;
+	
+	// The time the time slice will end:
+	uint64_t  m_TimeSliceUntil = 0;
+	
+	// The user-space GS base.
+	void*     m_UserGSBase = nullptr;
+	
+	// When calling JumpExecContext, also restore these if needed:
+	bool m_bNeedRestoreAdditionalRegisters = false;
+	ThreadAdditionalRegisters m_AdditionalRegisters;
 	
 	// The saved execution context of the thread.
 	ThreadExecutionContext m_ExecContext;

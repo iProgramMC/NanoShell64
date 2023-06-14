@@ -139,7 +139,7 @@ extern "C" void Arch_APIC_OnIPInterrupt()
 }
 
 extern "C" void Arch_APIC_OnTimerInterrupt_Asm();
-extern "C" void Arch_APIC_OnTimerInterrupt()
+extern "C" void Arch_APIC_OnTimerInterrupt(Registers* pRegs)
 {
 	using namespace Arch;
 	
@@ -147,7 +147,7 @@ extern "C" void Arch_APIC_OnTimerInterrupt()
 	CPU* pCpu = CPU::GetCurrent();
 	
 	// Tell it that we've IPI'd.
-	pCpu->OnTimerIRQ();
+	pCpu->OnTimerIRQ(pRegs);
 	
 	// Send an EOI.
 	APIC::WriteReg(APIC_REG_EOI, 0);
