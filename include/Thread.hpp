@@ -99,6 +99,17 @@ public:
 		SLEEPING,  // The thread is sleeping until a moment in time in the future.
 	};
 	
+public: // Static operations performed on the current thread
+	
+	// Yields execution of the current thread.
+	static void Yield();
+	
+	// Puts the thread to sleep for some time.
+	static void Sleep(uint64_t nanoseconds);
+	
+	// Gets the current running thread.
+	static Thread* GetCurrent();
+	
 public:
 	// This sets the entry point of the thread.
 	// This is only possible before the Start() function is called.
@@ -114,6 +125,9 @@ public:
 	
 	// Suspends the thread's execution.
 	void Suspend();
+	
+	// Suspends the thread's execution until a time point.
+	void SleepUntil(uint64_t time);
 	
 	// Resumes the thread's execution, if it was suspended.
 	void Resume();
@@ -132,9 +146,6 @@ public:
 	// has been detached.
 	void Join();
 	
-	// Yields execution of the current thread.
-	static void Yield();
-	
 private:
 	static void Beginning();
 	
@@ -146,6 +157,7 @@ protected:
 	
 	// Also allow comparison structs to access our protected fields.
 	friend struct Thread_ExecQueueComparator;
+	friend struct Thread_SleepTimeComparator;
 	
 	// The ID of the thread.
 	int m_ID;
@@ -173,6 +185,9 @@ protected:
 	uint64_t* m_pStack;
 	size_t    m_StackSize = 32768;
 	
+	// The time the thread will wake up:
+	Atomic<uint64_t> m_SleepingUntil = 0;
+	
 	// The time the time slice will end:
 	uint64_t  m_TimeSliceUntil = 0;
 	
@@ -188,6 +203,9 @@ protected:
 	
 	// Jumps to this thread's execution context.
 	void JumpExecContext();
+	
+	// Unsuspend the thread.
+	void Unsuspend();
 };
 
 #endif//_THREAD_HPP

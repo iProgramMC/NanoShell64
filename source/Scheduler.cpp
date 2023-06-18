@@ -16,18 +16,33 @@ void Scheduler::IdleThread()
 {
 	while (true)
 	{
-		LogMsg("Idle thread from CPU %u", Arch::CPU::GetCurrent()->ID());
-		//Thread::Yield();
 		Arch::Halt();
 	}
 }
-void Scheduler::Idle2Thread()
-{	
+
+void Scheduler::NormalThread()
+{
+	int x=0;
+	volatile int* px = &x;
+	
 	while (true)
 	{
 		LogMsg("Normal thread on CPU %u", Arch::CPU::GetCurrent()->ID());
-		//Thread::Yield();
-		Arch::Halt();
+		
+		Thread::Sleep(100'000'000); // sleep for 100 MS
+	}
+}
+
+void Scheduler::RealTimeThread()
+{
+	int x=0;
+	volatile int* px = &x;
+	
+	while (true)
+	{
+		LogMsg("Real Time thread on CPU %u", Arch::CPU::GetCurrent()->ID());
+		
+		Thread::Sleep(1'000'000'000); // sleep for 1000 MS
 	}
 }
 
@@ -51,21 +66,27 @@ Thread* Scheduler::GetCurrentThread()
 void Scheduler::Init()
 {
 	// create an idle thread now
-	Thread* pIdle = CreateThread();
-	Thread* pIdle2 = CreateThread();
+	Thread* pThrd1 = CreateThread();
+	Thread* pThrd2 = CreateThread();
+	Thread* pThrd3 = CreateThread();
 	
-	if (!pIdle || !pIdle2)
-		KernelPanic("could not create idle or idle2 thread");
+	if (!pThrd1 || !pThrd2 || !pThrd3)
+		KernelPanic("could not create either one of these three threads");
 	
-	pIdle->SetEntryPoint(Scheduler::IdleThread);
-	pIdle->SetPriority(Thread::NORMAL);
-	pIdle->Start();
-	pIdle->Detach();
+	pThrd1->SetEntryPoint(Scheduler::IdleThread);
+	pThrd1->SetPriority(Thread::IDLE);
+	pThrd1->Start();
+	pThrd1->Detach();
 	
-	pIdle2->SetEntryPoint(Scheduler::Idle2Thread);
-	pIdle2->SetPriority(Thread::NORMAL);
-	pIdle2->Start();
-	pIdle2->Detach();
+	pThrd2->SetEntryPoint(Scheduler::NormalThread);
+	pThrd2->SetPriority(Thread::NORMAL);
+	pThrd2->Start();
+	pThrd2->Detach();
+	
+	pThrd3->SetEntryPoint(Scheduler::RealTimeThread);
+	pThrd3->SetPriority(Thread::REALTIME);
+	pThrd3->Start();
+	pThrd3->Detach();
 }
 
 // note that when a thread is scheduled for execution, it is removed from any queue
@@ -90,8 +111,13 @@ void Scheduler::Done(Thread* pThread)
 			break;
 		case Thread::SUSPENDED:
 			// If this thread is now suspended, but has been running before, this means that
-			// it does not belong to the suspended threads array and should be added there.
+			// it does not appear in the suspended threads array and should be added there.
 			m_SuspendedThreads.AddBack(pThread);
+			break;
+		case Thread::SLEEPING:
+			// If this thread is now sleeping, but has been running before, this means that
+			// it does not appear in the sleeping threads list and should be added there.
+			m_SleepingThreads.PushBack(pThread);
 			break;
 		default:
 			ASSERT_UNREACHABLE;
@@ -125,13 +151,60 @@ void Scheduler::CheckZombieThreads()
 	// TODO
 }
 
+// looks through the list of sleeping threads and unsuspends them if needed
+// Note: This could be a performance concern.
+void Scheduler::UnsuspendSleepingThreads()
+{
+	// we can get away with simply checking the top
+	if (m_SleepingThreads.Size() == 0) return;
+	
+	uint64_t currTime = Arch::GetTickCount();
+	
+	Thread* pThrd = m_SleepingThreads[0];
+	
+	while (pThrd->m_SleepingUntil.Load() - 100 < currTime)
+	{
+		// unsuspend it
+		pThrd->Unsuspend();
+		// place it back on the regular queues:
+		Done(pThrd);
+		
+		// pop it off the top of the list:
+		m_SleepingThreads.Erase(0);
+		
+		if (m_SleepingThreads.Size() == 0)
+		{
+			pThrd = NULL;
+			break;
+		}
+		
+		pThrd = m_SleepingThreads[0];
+	}
+}
+
+uint64_t Scheduler::CheckSleepingThreads()
+{
+	if (m_SleepingThreads.Size() == 0) return 0;
+	
+	// we can get away with simply checking the top
+	uint64_t currTime = Arch::GetTickCount();
+	Thread* pThrd = m_SleepingThreads[0];
+	
+	if (pThrd->m_SleepingUntil.Load() - 100 < currTime)
+	{
+		// if there's still things to unsuspend, we probably failed in UnsuspendSleepingThreads.
+		// Just let it retry in 1 microsecond
+		return currTime + 1000;
+	}
+	
+	return pThrd->m_SleepingUntil.Load();
+}
+
 // this is only to be called from Thread::Yield!!!
 void Scheduler::Schedule(bool bRunFromTimerIRQ)
 {
 	using namespace Arch;
 	m_pCurrentThread = nullptr;
-	
-	CheckEvents();
 	
 	Thread* pThread = PopNextThread();
 	
@@ -178,10 +251,12 @@ void Scheduler::CheckEvents()
 {
 	CheckUnsuspensionConditions();
 	CheckZombieThreads();
+	UnsuspendSleepingThreads();
 }
 
 void Scheduler::OnTimerIRQ(Registers* pRegs)
 {
+	SLogMsg("X");
 	using namespace Arch;
 	CPU* pCpu = CPU::GetCurrent();
 	uint64_t currTime = Arch::GetTickCount();
@@ -252,6 +327,15 @@ uint64_t Scheduler::NextEvent()
 		time = m_pCurrentThread->m_TimeSliceUntil;
 	
 	// TODO: for each suspended thread, check if it's ready to be woken up
+	uint64_t stTime = CheckSleepingThreads();
+	if (time > stTime && stTime != 0)
+		time = stTime;
+	
+	if (time < currTime)
+	{
+		// if we somehow managed to mess it up, try again in 1 microsecond, should fix it:
+		time = currTime + 1000;
+	}
 	
 	return time;
 }

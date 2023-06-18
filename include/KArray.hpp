@@ -12,7 +12,7 @@
 
 // NOTE: This structure is NOT thread safe.
 
-// NOTE: TODO: Use the kernel heap directly instead of initializing extra elements that will be removed.
+// NOTE: TODO: Use the kernel heap directly instead of initializing extra elements that will go unused.
 
 // This will mostly be used with pointer types, so this is probably fine.
 

@@ -27,6 +27,14 @@ struct Thread_ExecQueueComparator
 	}
 };
 
+struct Thread_SleepTimeComparator
+{
+	bool operator() (Thread* threadA, Thread* threadB) const
+	{
+		return threadA->m_SleepingUntil.Load() < threadB->m_SleepingUntil.Load();
+	}
+};
+
 // The way this works is simple. When a thread is to be scheduled, the pointer:
 // - is popped off the relevant queue
 // - is placed as "the current thread"
@@ -66,18 +74,17 @@ protected:
 private:
 	// A list of ALL threads ever.
 	KList<Thread*> m_AllThreads;
-	
 	KList<Thread*> m_ThreadFreeList;
-	
 	KPriorityQueue<Thread*, Thread_ExecQueueComparator> m_ExecutionQueue;
-	
+	KPriorityQueue<Thread*, Thread_SleepTimeComparator> m_SleepingThreads;
 	KList<Thread*> m_SuspendedThreads;
 	KList<Thread*> m_ZombieThreads;      // Threads to clean up and dispose.
 	
 	Thread *m_pCurrentThread = nullptr;
 	
 	static void IdleThread();
-	static void Idle2Thread();
+	static void NormalThread();
+	static void RealTimeThread();
 	
 	void DeleteThread(Thread* pThread);
 	
@@ -89,6 +96,13 @@ private:
 	
 	// Kill every zombie thread that isn't owned by anybody.
 	void CheckZombieThreads();
+	
+	// Check for sleeping threads that need to wake up.
+	// Returns the time the next thread needs to wake up, or zero if no thread needs to wake up
+	uint64_t CheckSleepingThreads();
+	
+	// Unsuspends sleeping threads if needed.
+	void UnsuspendSleepingThreads();
 	
 	// Check for events for the scheduler.
 	void CheckEvents();

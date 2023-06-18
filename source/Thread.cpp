@@ -14,7 +14,6 @@ extern "C" NO_RETURN     void    JumpThreadEC2(Thread::ExecutionContext* pEC, Th
 
 void Thread::Beginning()
 {
-	SLogMsg("Thread started!");
 	Thread* pThread = Arch::CPU::GetCurrent()->GetScheduler()->GetCurrentThread();
 	
 	// call the entry point
@@ -83,12 +82,10 @@ void Thread::Kill()
 		Yield();
 }
 
-void Thread::Suspend()
+void Thread::Unsuspend()
 {
-	m_Status.Store(SUSPENDED);
-	
-	if (this == m_pScheduler->GetCurrentThread())
-		Yield();
+	m_Status.Store(RUNNING);
+	m_SleepingUntil = 0;
 }
 
 void Thread::Resume()
@@ -191,4 +188,31 @@ void Thread::JumpExecContext()
 	{
 		JumpThreadEC(&m_ExecContext, 1);
 	}
+}
+
+Thread* Thread::GetCurrent()
+{
+	return Arch::CPU::GetCurrent()->GetScheduler()->GetCurrentThread();
+}
+
+void Thread::Suspend()
+{
+	m_Status.Store(SUSPENDED);
+	
+	if (this == m_pScheduler->GetCurrentThread())
+		Yield();
+}
+
+void Thread::SleepUntil(uint64_t time)
+{
+	m_SleepingUntil.Store(time);
+	m_Status.Store(SLEEPING);
+	
+	if (this == m_pScheduler->GetCurrentThread())
+		Yield();
+}
+
+void Thread::Sleep(uint64_t nanoseconds)
+{
+	GetCurrent()->SleepUntil(Arch::GetTickCount() + nanoseconds - 20);
 }

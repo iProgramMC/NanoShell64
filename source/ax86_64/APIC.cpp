@@ -320,7 +320,9 @@ void APIC::CalibrateTimer(uint64_t &apicOut, uint64_t &tscOut)
 void APIC::ScheduleInterruptIn(uint64_t nanoseconds)
 {
 	if (nanoseconds >= 1'000'000'000'000ULL)
-		;//KernelPanic("nanoseconds value too big (%lld)", nanoseconds);
+	{
+		SLogMsg("APIC::ScheduleInterruptIn: nanoseconds value too big (%lld, %p)", nanoseconds, __builtin_return_address(0));
+	}
 	
 	uint64_t lvtTimerReg = 0;
 	

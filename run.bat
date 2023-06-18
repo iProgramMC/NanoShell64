@@ -10,12 +10,12 @@ set path=%path%;%NSPath%
 qemu-system-x86_64.exe -no-reboot -no-shutdown  ^
 -M q35                                          ^
 -m 256M                                         ^
--smp 4                                          ^
+-smp 1                                          ^
 -boot d                                         ^
 -cdrom %nspath%\build\image.iso                 ^
 -debugcon stdio                                 ^
 -display sdl                                    ^
--accel tcg                                      ^
+-accel tcg                -trace apic_*         ^
 -monitor telnet:127.0.0.1:56789,server,nowait
 
 :-d cpu_reset                                    ^

@@ -63,7 +63,7 @@ Spinlock g_TermSpinlock;
 
 void Terminal::E9Write(const char* str)
 {
-	LockGuard lg(g_E9Spinlock);
+	//LockGuard lg(g_E9Spinlock);
 	while (*str)
 	{
 		Arch::WriteByte(0xE9, *str);
@@ -73,7 +73,7 @@ void Terminal::E9Write(const char* str)
 
 void Terminal::E9WriteLn(const char* str)
 {
-	LockGuard lg(g_E9Spinlock);
+	//LockGuard lg(g_E9Spinlock);
 	while (*str)
 	{
 		Arch::WriteByte(0xE9, *str);
