@@ -168,6 +168,40 @@ JumpThreadEC:
 	pop  r15
 	iretq
 
+; definition: NO_RETURN void JumpThreadEC2( &ThreadExecutionContext, &ThreadAdditionalRegisters );
+global JumpThreadEC2
+JumpThreadEC2:
+	; mov the execution context into RBX, we'll need it later, and RBX is a free reg which we don't restore from the AR
+	mov  rbx, rdi
+	; pop the additional registers
+	mov  rsp, rsi
+	pop  rax
+	pop  rcx
+	pop  rdx
+	pop  rsi
+	pop  rdi
+	pop  r8
+	pop  r9
+	pop  r10
+	pop  r11
+	pop  r12
+	mov  ds, r12
+	pop  r12
+	mov  es, r12
+	pop  r12
+	mov  fs, r12
+	pop  r12
+	mov  gs, r12
+	; now pop the execution context
+	mov  rsp, rbx
+	pop  rbp
+	pop  rbx
+	pop  r12
+	pop  r13
+	pop  r14
+	pop  r15
+	iretq
+
 ; definition: RETURNS_TWICE uint64_t SetThreadEC( &ThreadExecutionContext );
 global SetThreadEC
 SetThreadEC:

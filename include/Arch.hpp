@@ -182,6 +182,9 @@ namespace Arch
 		// To avoid race conditions, only the scheduler may use this.
 		void ScheduleInterruptIn(uint64_t nanoseconds);
 		
+		// Tell the APIC that we are done processing its interrupt.
+		void EndOfInterrupt();
+		
 		// Calibrate the APIC and TSC timers using the PIT or HPET. Used by the CPU.
 		// Returns the frequency of ticks per millisecond.
 		// This is not thread safe, so be sure to add locking before going in.

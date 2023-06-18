@@ -69,14 +69,14 @@ class Thread
 public:
 	// Note. This only saves important registers that will get us back
 	// to a context of a call to the Yield() function.
-	struct ThreadExecutionContext
+	struct ExecutionContext
 	{
 		uint64_t rbp, rbx, r12, r13, r14, r15;
 		uint64_t rip, cs, rflags, rsp, ss; // popped by iretq. Allows for an easy return to normal
 	};
 	
 	// Additional registers that must be restored as well.
-	struct ThreadAdditionalRegisters
+	struct AdditionalRegisters
 	{
 		uint64_t rax, rcx, rdx, rsi, rdi, r8, r9, r10, r11;
 		uint64_t ds, es, fs, gs;
@@ -181,10 +181,10 @@ protected:
 	
 	// When calling JumpExecContext, also restore these if needed:
 	bool m_bNeedRestoreAdditionalRegisters = false;
-	ThreadAdditionalRegisters m_AdditionalRegisters;
+	AdditionalRegisters m_AdditionalRegisters;
 	
 	// The saved execution context of the thread.
-	ThreadExecutionContext m_ExecContext;
+	ExecutionContext m_ExecContext;
 	
 	// Jumps to this thread's execution context.
 	void JumpExecContext();

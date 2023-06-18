@@ -98,6 +98,11 @@ uintptr_t APIC::GetLapicBase()
 	return GetHHDMOffset() + GetLapicBasePhys();
 }
 
+void APIC::EndOfInterrupt()
+{
+	APIC::WriteReg(APIC_REG_EOI, 0);
+}
+
 void APIC::EnsureOn()
 {
 	// Use the CPUID instruction.
@@ -114,10 +119,7 @@ void APIC::EnsureOn()
 extern "C" void Arch_APIC_OnSpInterrupt_Asm();
 extern "C" void Arch_APIC_OnSpInterrupt()
 {
-	// Send an EOI.
-	APIC::WriteReg(APIC_REG_EOI, 0);
-	
-	SLogMsg("Spurious!");
+	APIC::EndOfInterrupt();
 }
 
 extern "C" void Arch_APIC_OnIPInterrupt_Asm();
@@ -132,7 +134,7 @@ extern "C" void Arch_APIC_OnIPInterrupt()
 	pCpu->OnIPI();
 	
 	// Send an EOI.
-	APIC::WriteReg(APIC_REG_EOI, 0);
+	APIC::EndOfInterrupt();
 	
 	// since a CPU::SendIPI() call was needed to reach this point, unlock the IPI spinlock.
 	pCpu->UnlockIpiSpinlock();
@@ -146,11 +148,17 @@ extern "C" void Arch_APIC_OnTimerInterrupt(Registers* pRegs)
 	// Get the current CPU.
 	CPU* pCpu = CPU::GetCurrent();
 	
+	// make sure to let ourselves know that right now, interrupts are disabled.
+	pCpu->InterruptsEnabledRaw() = false;
+	
 	// Tell it that we've IPI'd.
 	pCpu->OnTimerIRQ(pRegs);
 	
 	// Send an EOI.
-	APIC::WriteReg(APIC_REG_EOI, 0);
+	APIC::EndOfInterrupt();
+	
+	// go back to the old state
+	pCpu->InterruptsEnabledRaw() = (pRegs->rflags & C_RFLAGS_INTERRUPT_FLAG);
 }
 
 void APIC::Init()
@@ -311,6 +319,9 @@ void APIC::CalibrateTimer(uint64_t &apicOut, uint64_t &tscOut)
 
 void APIC::ScheduleInterruptIn(uint64_t nanoseconds)
 {
+	if (nanoseconds >= 1'000'000'000'000ULL)
+		;//KernelPanic("nanoseconds value too big (%lld)", nanoseconds);
+	
 	uint64_t lvtTimerReg = 0;
 	
 	// bit 16: masked. That'll be 0
@@ -327,8 +338,6 @@ void APIC::ScheduleInterruptIn(uint64_t nanoseconds)
 	
 	// get the new timer value:
 	uint64_t timerVal = pCpu->GetLapicTicksPerMS() * nanoseconds / C_MILLIS_TO_NANOS;
-	
-	SLogMsg("[CPU %d] TimerVal: %lld", pCpu->ID(), timerVal);
 	
 	// set the count:
 	APIC::WriteReg(APIC_REG_TMR_INIT_CNT, timerVal);

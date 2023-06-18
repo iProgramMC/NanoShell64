@@ -57,14 +57,8 @@ protected:
 	// Let the scheduler know that this thread's quantum is over.
 	void Done(Thread* pThrd);
 	
-	// For each suspended thread, check if it's suspended anymore.
-	void CheckUnsuspensionConditions();
-	
-	// Kill every zombie thread that isn't owned by anybody.
-	void CheckZombieThreads();
-	
 	// Schedules in a new thread. This is used within Thread::Yield(), so use that instead.
-	void Schedule();
+	void Schedule(bool bRunFromTimerIRQ);
 	
 	// The function run when an interrupt comes in.
 	void OnTimerIRQ(Registers* pRegs);
@@ -89,6 +83,15 @@ private:
 	
 	// Looks for the next event that will happen, such as a thread wake up.
 	uint64_t NextEvent();
+	
+	// For each suspended thread, check if it's suspended anymore.
+	void CheckUnsuspensionConditions();
+	
+	// Kill every zombie thread that isn't owned by anybody.
+	void CheckZombieThreads();
+	
+	// Check for events for the scheduler.
+	void CheckEvents();
 };
 
 #endif//_SCHEDULER_HPP

@@ -8,8 +8,9 @@
 //  ***************************************************************
 #include <Arch.hpp>
 
-extern "C" RETURNS_TWICE uint64_t SetThreadEC(Thread::ThreadExecutionContext* pEC);
-extern "C" NO_RETURN     void    JumpThreadEC(Thread::ThreadExecutionContext* pEC, uint64_t value);
+extern "C" RETURNS_TWICE uint64_t SetThreadEC(Thread::ExecutionContext* pEC);
+extern "C" NO_RETURN     void    JumpThreadEC(Thread::ExecutionContext* pEC, uint64_t value);
+extern "C" NO_RETURN     void    JumpThreadEC2(Thread::ExecutionContext* pEC, Thread::AdditionalRegisters* pAR);
 
 void Thread::Beginning()
 {
@@ -158,7 +159,7 @@ void Thread::Yield()
 	
 	if (pThrd == nullptr)
 	{
-		pSched->Schedule();
+		pSched->Schedule(false);
 		ASSERT_UNREACHABLE;
 	}
 	
@@ -170,7 +171,7 @@ void Thread::Yield()
 	}
 	
 	pSched->Done(pThrd);
-	pSched->Schedule();
+	pSched->Schedule(false);
 	ASSERT_UNREACHABLE;
 }
 
@@ -179,6 +180,15 @@ void Thread::JumpExecContext()
 	using namespace Arch;
 	CPU* pCpu = CPU::GetCurrent();
 	
-	pCpu->InterruptsEnabledRaw() = (m_ExecContext.rflags & C_RFLAGS_INTERRUPT_FLAG);	
-	JumpThreadEC(&m_ExecContext, 1);
+	pCpu->InterruptsEnabledRaw() = (m_ExecContext.rflags & C_RFLAGS_INTERRUPT_FLAG);
+	
+	if (m_bNeedRestoreAdditionalRegisters)
+	{
+		m_bNeedRestoreAdditionalRegisters = false;
+		JumpThreadEC2(&m_ExecContext, &m_AdditionalRegisters);
+	}
+	else
+	{
+		JumpThreadEC(&m_ExecContext, 1);
+	}
 }

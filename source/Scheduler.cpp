@@ -58,7 +58,7 @@ void Scheduler::Init()
 		KernelPanic("could not create idle or idle2 thread");
 	
 	pIdle->SetEntryPoint(Scheduler::IdleThread);
-	pIdle->SetPriority(Thread::IDLE);
+	pIdle->SetPriority(Thread::NORMAL);
 	pIdle->Start();
 	pIdle->Detach();
 	
@@ -126,13 +126,12 @@ void Scheduler::CheckZombieThreads()
 }
 
 // this is only to be called from Thread::Yield!!!
-void Scheduler::Schedule()
+void Scheduler::Schedule(bool bRunFromTimerIRQ)
 {
+	using namespace Arch;
 	m_pCurrentThread = nullptr;
 	
-	CheckUnsuspensionConditions();
-	
-	CheckZombieThreads();
+	CheckEvents();
 	
 	Thread* pThread = PopNextThread();
 	
@@ -144,6 +143,20 @@ void Scheduler::Schedule()
 	
 	// set this thread as the current thread.
 	m_pCurrentThread = pThread;
+	
+	// set when the thread's time slice will expire:
+	pThread->m_TimeSliceUntil = Arch::GetTickCount() + C_THREAD_MAX_TIME_SLICE;
+	
+	// schedule an interrupt for the next event:
+	uint64_t currTime  = Arch::GetTickCount();
+	uint64_t nextEvent = NextEvent();
+	uint64_t timeWait  = nextEvent - 10 - currTime;
+	
+	APIC::ScheduleInterruptIn(timeWait);
+	
+	// if run from the timer IRQ, don't forget to send the APIC an EOI:
+	if (bRunFromTimerIRQ)
+		APIC::EndOfInterrupt();
 	
 	// go!
 	m_pCurrentThread->JumpExecContext();
@@ -161,7 +174,84 @@ void Scheduler::DeleteThread(Thread* pThread)
 	}
 }
 
+void Scheduler::CheckEvents()
+{
+	CheckUnsuspensionConditions();
+	CheckZombieThreads();
+}
+
 void Scheduler::OnTimerIRQ(Registers* pRegs)
 {
-	// TODO
+	using namespace Arch;
+	CPU* pCpu = CPU::GetCurrent();
+	uint64_t currTime = Arch::GetTickCount();
+	
+	CheckEvents();
+	
+	// if we're running a thread right now... (note the reference. This is important)
+	Thread* &t = m_pCurrentThread;
+	if (t)
+	{
+		// If the thread's time slice has not expired yet, simply check for events, reprogram the APIC, and return.
+		if (t->m_TimeSliceUntil - 100 > currTime)
+		{
+			uint64_t nextEvent = NextEvent();
+			uint64_t timeWait  = nextEvent - 10 - currTime;
+			Arch::APIC::ScheduleInterruptIn(timeWait);
+			return;
+		}
+		
+		// Save its context.
+		t->m_bNeedRestoreAdditionalRegisters = true;
+		
+		Thread::AdditionalRegisters & ar = t->m_AdditionalRegisters;
+		Thread::ExecutionContext    & ec = t->m_ExecContext;
+		
+		// this is long...
+		ar.rax = pRegs->rax;
+		ar.rcx = pRegs->rcx;
+		ar.rdx = pRegs->rdx;
+		ar.rsi = pRegs->rsi;
+		ar.rdi = pRegs->rdi;
+		ar.r8  = pRegs->r8;
+		ar.r9  = pRegs->r9;
+		ar.r10 = pRegs->r10;
+		ar.r11 = pRegs->r11;
+		ar.ds  = pRegs->ds;
+		ar.es  = pRegs->es;
+		ar.fs  = pRegs->fs;
+		ar.gs  = pRegs->gs;
+		ec.rbp = pRegs->rbp;
+		ec.rbx = pRegs->rbx;
+		ec.r12 = pRegs->r12;
+		ec.r13 = pRegs->r13;
+		ec.r14 = pRegs->r14;
+		ec.r15 = pRegs->r15;
+		ec.rip = pRegs->rip;
+		ec.rsp = pRegs->rsp;
+		ec.cs  = pRegs->cs;
+		ec.ss  = pRegs->ss;
+		ec.rflags = pRegs->rflags;
+		
+		//Mmark the thread as 'done' and set the current thread to nullptr, then schedule
+		Done(t);
+		t = nullptr;
+	}
+	
+	Schedule(true);
+}
+
+uint64_t Scheduler::NextEvent()
+{
+	uint64_t currTime = Arch::GetTickCount();
+	
+	// Figure out when the next event will be.
+	uint64_t time = currTime + C_THREAD_MAX_TIME_SLICE;
+	
+	if (m_pCurrentThread)
+		time = m_pCurrentThread->m_TimeSliceUntil;
+	
+	// TODO: for each suspended thread, check if it's ready to be woken up
+	
+	return time;
 }
