@@ -2,3 +2,5 @@ build/*
 .keep/*
 limine/*
 keep/*
+
+source/ha/flanterm/*
