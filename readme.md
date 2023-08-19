@@ -25,6 +25,13 @@ to run the built iso using your native QEMU installation on Windows.
 
 ## Goals/plans
 
+#### Source code layout
+Currently, the OS's source is structured into the following:
+* `hal/` - Hardware specifics (currently, only for x86_64)
+* `ke/`  - Kernel (scheduler)
+* `mm/`  - Memory manager
+* `*.*`  - Misc stuff
+
 #### Architecture design
 There's hardly a decided architecture design, as this is right now at the experimental stage.
 I'd like to experiment with: (currently only one thing but I may add more)

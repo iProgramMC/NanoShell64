@@ -17,7 +17,7 @@ int     g_HalTerminalMemoryHead;
 #define HAL_TERM_MEM_SIZE (sizeof g_HalTerminalMemory)
 
 // This is defined in init.c
-extern struct limine_framebuffer_request g_FramebufferRequest;
+extern volatile struct limine_framebuffer_request g_FramebufferRequest;
 
 struct flanterm_context* g_pTerminalContext;
 
