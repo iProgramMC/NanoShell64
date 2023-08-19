@@ -15,7 +15,7 @@ qemu-system-x86_64.exe -no-reboot -no-shutdown  ^
 -cdrom %nspath%\build\image.iso                 ^
 -debugcon stdio                                 ^
 -display sdl                                    ^
--accel tcg                -trace apic_*         ^
+-accel tcg                                      ^
 -monitor telnet:127.0.0.1:56789,server,nowait
 
 :-d cpu_reset                                    ^

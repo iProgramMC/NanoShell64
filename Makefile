@@ -32,6 +32,9 @@ define DEFAULT_VAR =
 	endif
 endef
 
+# Defines - I would edit flanterm itself but then submodules would get rid of our work.
+DEFINES = -DFLANTERM_FB_DISABLE_CANVAS
+
 # It is highly recommended to use a custom built cross toolchain to build a kernel.
 # We are only using "cc" as a placeholder here. It may work by using
 # the host system's toolchain, but this is not guaranteed.
@@ -42,10 +45,10 @@ $(eval $(call DEFAULT_VAR,CXX,c++))
 $(eval $(call DEFAULT_VAR,LD,ld))
 
 # User controllable CFLAGS.
-CFLAGS ?= -g -O2 -pipe -Wall -Wextra -I $(INC_DIR) -DTARGET_$(TARGET)
+CFLAGS ?= -g -O2 -pipe -Wall -Wextra -I $(INC_DIR) -DTARGET_$(TARGET) $(DEFINES)
 
 # User controllable CXXFLAGS.
-CXXFLAGS ?= -g -O2 -pipe -Wall -Wextra -I $(INC_DIR) -DTARGET_$(TARGET)
+CXXFLAGS ?= -g -O2 -pipe -Wall -Wextra -I $(INC_DIR) -DTARGET_$(TARGET) $(DEFINES)
 
 # User controllable preprocessor flags. We set none by default.
 CPPFLAGS ?=

@@ -1,20 +1,4 @@
-//  ***************************************************************
-//  CStandard.cpp - Creation date: 05/01/2023
-//  -------------------------------------------------------------
-//  NanoShell64 Copyright (C) 2022 - Licensed under GPL V3
-//
-//  ***************************************************************
-//  Programmer(s):  iProgramInCpp (iprogramincpp@gmail.com)
-//  ***************************************************************
-//  
-//  Module description:
-//      This module implements the standard C functions that may
-//    not be needed, such as memcpy, memset, strlen etc.
-//
-//  ***************************************************************
-#include <NanoShell.hpp>
-
-extern "C" {
+#include <main.h>
 
 void* memcpy(void* dst, const void* src, size_t n)
 {
@@ -93,5 +77,3 @@ int strcmp(const char* s1, const char* s2)
 	}
 	return 0;
 }
-
-};
