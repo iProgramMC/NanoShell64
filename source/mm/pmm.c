@@ -116,7 +116,7 @@ PageFrame* MmGetPageFrameFromPFN(int pfn)
 }
 
 // for the page frame allocator
-int g_firstPFN = -1, g_lastPFN = -1;
+int g_firstPFN = PFN_INVALID, g_lastPFN = PFN_INVALID;
 
 // Note! Initialization is done on the BSP. So no locking needed
 void MiInitPMM()
@@ -182,7 +182,7 @@ void MiInitPMM()
 	
 	SLogMsg("Initializing the PFN database");
 	// pass 2: Initting the PFN database
-	int lastPfnOfPrevBlock = -1;
+	int lastPfnOfPrevBlock = PFN_INVALID;
 	
 	for (uint64_t i = 0; i < pResponse->entry_count; i++)
 	{
@@ -196,7 +196,7 @@ void MiInitPMM()
 		{
 			int currPFN = MmPhysPageToPFN(pEntry->base + j);
 			
-			if (g_firstPFN == -1)
+			if (g_firstPFN == PFN_INVALID)
 				g_firstPFN =  currPFN;
 			
 			PageFrame* pPF = MmGetPageFrameFromPFN(currPFN);
@@ -210,7 +210,7 @@ void MiInitPMM()
 				pPF->m_prevFrame = lastPfnOfPrevBlock;
 				
 				// also update the last PF's next frame idx
-				if (lastPfnOfPrevBlock != -1)
+				if (lastPfnOfPrevBlock != PFN_INVALID)
 				{
 					PageFrame* pPrevPF = MmGetPageFrameFromPFN(lastPfnOfPrevBlock);
 					pPrevPF->m_nextFrame = currPFN;
@@ -223,7 +223,7 @@ void MiInitPMM()
 			
 			if (j + PAGE_SIZE >= pEntry->length)
 			{
-				pPF->m_nextFrame = -1; // it's going to be updated by the next block if there's one
+				pPF->m_nextFrame = PFN_INVALID; // it's going to be updated by the next block if there's one
 			}
 			else
 			{
@@ -240,3 +240,65 @@ void MiInitPMM()
 	LogMsg("PFN database initialized.");
 }
 
+// TODO: Add locking
+
+int MmAllocatePhysicalPage()
+{
+	if (g_firstPFN == PFN_INVALID)
+		return PFN_INVALID;
+	
+	int currPFN = g_firstPFN;
+	PageFrame *pPF = MmGetPageFrameFromPFN(g_firstPFN);
+	
+	pPF->m_flags |= PF_FLAG_ALLOCATED;
+	
+	// disconnect its neighbors from this one
+	if (pPF->m_nextFrame != PFN_INVALID)
+		MmGetPageFrameFromPFN(pPF->m_nextFrame)->m_prevFrame = pPF->m_prevFrame;
+	if (pPF->m_prevFrame != PFN_INVALID)
+		MmGetPageFrameFromPFN(pPF->m_prevFrame)->m_nextFrame = pPF->m_nextFrame;
+	
+	// set the first PFN of the list to the next PFN
+	g_firstPFN = pPF->m_nextFrame;
+	
+	// if the next frame is PFN_INVALID, we're done with the list entirely...
+	if (g_firstPFN == PFN_INVALID)
+		g_lastPFN  =  PFN_INVALID;
+	
+	return currPFN;
+}
+
+void MmFreePhysicalPage(int pfn)
+{
+	if (g_firstPFN == PFN_INVALID)
+	{
+		// add it in as The Only One.
+		// Ideally this code path isn't reached. However, the system
+		// may have a hard time with exhausted physical memory.
+		g_firstPFN = g_lastPFN = pfn;
+		
+		PageFrame* pPF = MmGetPageFrameFromPFN(pfn);
+		pPF->m_nextFrame = PFN_INVALID;
+		pPF->m_prevFrame = PFN_INVALID;
+		
+		return;
+	}
+	
+	// connect it to the last PFN.
+	PageFrame *pLastPFN = MmGetPageFrameFromPFN(g_lastPFN), *pCurrPFN = MmGetPageFrameFromPFN(pfn);
+	
+	// Attempt to detect double frees.
+	if (~pCurrPFN->m_flags & PF_FLAG_ALLOCATED)
+	{
+		LogMsg("Error, you can't free page %d twice", pfn);
+		SLogMsg("Error, you can't free page %d twice", pfn);
+		// TODO: panic
+		return;
+	}
+	
+	pLastPFN->m_nextFrame = pfn;
+	pCurrPFN->m_prevFrame = g_lastPFN;
+	pCurrPFN->m_nextFrame = PFN_INVALID;
+	pCurrPFN->m_flags &= ~PF_FLAG_ALLOCATED;
+	g_lastPFN = pfn;
+}

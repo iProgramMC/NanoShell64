@@ -36,6 +36,22 @@ void KiSystemStartup(void)
 	// initialize the physical memory manager
 	MiInitPMM();
 	
+	int page1=MmAllocatePhysicalPage();
+	int page2=MmAllocatePhysicalPage();
+	int page3=MmAllocatePhysicalPage();
+	
+	MmFreePhysicalPage(page1);
+	MmFreePhysicalPage(page3);
+	MmFreePhysicalPage(page2);
+	
+	int page4=MmAllocatePhysicalPage();
+	int page5=MmAllocatePhysicalPage();
+	LogMsg("Allocate physical pages: %d %d",page4,page5);
+	
+	
+	MmFreePhysicalPage(page5);
+	MmFreePhysicalPage(page4);
+	
 	LogMsg("Stopping because we have nothing to do");
 	KeStopCurrentCPU();
 }
