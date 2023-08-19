@@ -33,7 +33,7 @@ define DEFAULT_VAR =
 endef
 
 # Defines - I would edit flanterm itself but then submodules would get rid of our work.
-DEFINES = -DFLANTERM_FB_DISABLE_CANVAS
+DEFINES = -DFLANTERM_FB_DISABLE_CANVAS -DFLANTERM_FB_DISABLE_BUMP_ALLOC
 
 # It is highly recommended to use a custom built cross toolchain to build a kernel.
 # We are only using "cc" as a placeholder here. It may work by using

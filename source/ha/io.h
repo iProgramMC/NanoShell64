@@ -1,3 +1,5 @@
+// NanoShell64 - Hardware abstraction.
+// x86 specific port I/O
 #pragma once
 
 uint8_t HalPortReadByte(uint16_t portNo);
