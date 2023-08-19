@@ -12,7 +12,7 @@
 #include "flanterm/backends/fb.h"
 
 // NOTE: Initialization done on the BSP. So no need to sync anything
-uint8_t g_HalTerminalMemory[1024*1024];
+uint8_t g_HalTerminalMemory[512*1024];
 int     g_HalTerminalMemoryHead;
 #define HAL_TERM_MEM_SIZE (sizeof g_HalTerminalMemory)
 
@@ -44,6 +44,32 @@ void HalTerminalInit()
 	uint32_t defaultBG = 0x0000007f;
 	uint32_t defaultFG = 0x00ffffff;
 	
+	LogMsg("Screen resolution: %d by %d", pFramebuffer->width, pFramebuffer->height);
+	
+	// on a 1280x800 screen, the term will have a rez of 160x50 (8000 chars).
+	// 52 bytes per character.
+	
+	const int charWidth = 8, charHeight = 16;
+	int charScale = 1;
+	
+	while (true)
+	{
+		int termBufWidth  = pFramebuffer->width  / charWidth  / charScale;
+		int termBufHeight = pFramebuffer->height / charHeight / charScale;
+		
+		const int usagePerChar     = 52; // I calculated it
+		const int fontBoolMemUsage = charWidth * charHeight * 256; // there are 256 chars
+		const int fontDataMemUsage = charWidth * charHeight * 256 / 8;
+		const int contextSize      = sizeof(struct flanterm_fb_context);
+		
+		int totalMemUsage = contextSize + fontDataMemUsage + fontBoolMemUsage + termBufWidth * termBufHeight * usagePerChar;
+		if (totalMemUsage < (int)HAL_TERM_MEM_SIZE)
+			break;
+		
+		LogMsg("Have to increase due to a lack of reserved terminal memory. TotalMemUsage = %d for charScale %d", totalMemUsage, charScale);
+		charScale++;
+	}
+	
 	g_pTerminalContext = flanterm_fb_init(
 		&HalTerminalMemAlloc,
 		&HalTerminalFree,
@@ -59,9 +85,11 @@ void HalTerminalInit()
 		NULL,       // default background bright
 		NULL,       // default fontground bright
 		g_BuiltInFont, // font pointer
-		8, 16,         // font width and height
+		charWidth,     // font width
+		charHeight,    // font height
 		0,             // character spacing
-		1, 1,          // character scale x,y
+		charScale,     // character scale width
+		charScale,     // character scale height
 		0
 	);
 	
@@ -79,7 +107,10 @@ void HalDebugTerminalInit()
 void HalPrintString(const char* str)
 {
 	if (!g_pTerminalContext)
+	{
 		HalPrintStringDebug(str);
+		return;
+	}
 	
 	flanterm_write(g_pTerminalContext, str, strlen(str));
 }
