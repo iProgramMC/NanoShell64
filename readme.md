@@ -1,10 +1,8 @@
+### NanoShell64 has been officially deprecated as of August 20th, 2023. Instead, check out its successor, [The Boron Operating System](https://github.com/iProgramMC/Boron)
+
+<hr>
+
 # The NanoShell64 Operating System
-
-#### ABANDONED ABANDONED ABANDONED ABANDONED
-
-NanoShell64 has been officially abandoned as of August 20th, 2023. Instead, check out:
-
-## [The Boron Operating System](https://github.com/iProgramMC/Boron)
 
 NanoShell64 is a 64-bit operating system designed with SMP in mind.
 
